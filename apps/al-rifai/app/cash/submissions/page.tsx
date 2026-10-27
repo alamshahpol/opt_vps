@@ -1,7 +1,7 @@
 "use client";
 import "../cash.css";
 import "../cash-dashboard.css";
-import {useEffect,useState} from "react";
+import {useCallback,useEffect,useState} from "react";
 
 type User={id:string;username:string;role:"ADMIN"|"USER";displayName:string;mustChangePassword:boolean};
 type Submission={id:string;submitted_by_user_ref:string;employee_name:string;employee_mobile:string|null;payout_mobile:string|null;method:string;amount_minor:number;transaction_date:string;review_state:string;decided_at?:string|null};
@@ -25,23 +25,29 @@ export default function CashSubmissionsPage(){
  const [busy,setBusy]=useState(false);
  const [selected,setSelected]=useState<{submission:Submission;decisions:Decision[]}|null>(null);
 
- const loadSession=async()=>{
-  const response=await fetch('/api/cash/me',{headers:{Accept:'application/json'}});
-  if(!response.ok){setUser(null);setBooted(true);return;}
-  const data=await response.json() as {user:User;csrf:string};
-  setUser(data.user);setCsrf(data.csrf);setBooted(true);
-  await loadSubmissions(data.user,data.csrf);
- };
-
- const loadSubmissions=async(currentUser?:User,currentCsrf?:string)=>{
+ const loadSubmissions=useCallback(async()=>{
   const response=await fetch('/api/cash/submissions',{headers:{Accept:'application/json'}});
   const data=await response.json() as ApiError&{rows?:Submission[]};
   if(response.status===503){setAvailable(false);setMigration(data.migration??'');setRows([]);return;}
   if(!response.ok){setError(data.error??'Submissions could not be loaded.');return;}
-  setAvailable(true);void currentUser;void currentCsrf;setRows(data.rows??[]);
- };
+  setAvailable(true);setRows(data.rows??[]);
+ },[]);
 
- useEffect(()=>{void loadSession();},[]);
+ const loadSession=useCallback(async()=>{
+  const response=await fetch('/api/cash/me',{headers:{Accept:'application/json'}});
+  if(!response.ok){setUser(null);setBooted(true);return;}
+  const data=await response.json() as {user:User;csrf:string};
+  setUser(data.user);setCsrf(data.csrf);setBooted(true);
+  await loadSubmissions();
+ },[loadSubmissions]);
+
+ useEffect(()=>{
+  void (async()=>{
+    // State updates happen after an await boundary (react-compiler rule).
+    await Promise.resolve();
+    await loadSession();
+  })();
+ },[loadSession]);
 
  const submitLogin=async(event:React.FormEvent)=>{
   event.preventDefault();setError('');setBusy(true);
@@ -50,7 +56,7 @@ export default function CashSubmissionsPage(){
    const data=await response.json() as ApiError&{user?:User;csrf?:string};
    if(!response.ok)throw new Error(data.error??'Login failed');
    setUser(data.user??null);setCsrf(data.csrf??'');
-   await loadSubmissions(data.user,data.csrf);
+   await loadSubmissions();
   }catch(cause){setError(cause instanceof Error?cause.message:'Login failed');}
   finally{setBusy(false);}
  };
