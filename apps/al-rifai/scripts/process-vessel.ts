@@ -6,7 +6,7 @@ import {
   OWNER_ESCORT_CLIENTS,
   scopePhoneAliases,
 } from "../lib/escort-register.mjs";
-import {CASH_SCOPE_CHATS} from "../lib/cash-scope.ts";
+import {CASH_SCOPE_CHATS,isCashScopeOwner} from "../lib/cash-scope.ts";
 import {persistConfirmedProgram,persistOperation} from "../lib/vessel-ops.ts";
 import {analyzeMobile} from "../lib/mobile-identity.mjs";
 
@@ -210,7 +210,16 @@ async function processBatch():Promise<number>{
         });
         const operations=deriveEscortRegisterOps(
           account,[message],contacts,accountRows,aliases,groupAuthorizations,[...CASH_SCOPE_CHATS],
-          {epoch:"CANONICAL_BACKFILL_20261026",chatAliases},
+          {
+            epoch:"CANONICAL_BACKFILL_20261026",chatAliases,
+            // Only the verified Admin identity (the paired Owner account behind
+            // WA-01) may act as the confirmation sender. Any other outgoing row
+            // in a client chat is ignored instead of being treated as Admin.
+            requireVerifiedAdmin:true,
+            isVerifiedAdmin:(candidate:{sender?:string;nativeSenderJid?:string;direction?:string})=>
+              candidate.direction==="OUTGOING"
+              &&(isCashScopeOwner(String(candidate.sender??""))||isCashScopeOwner(String(candidate.nativeSenderJid??""))),
+          },
         ) as EscortOperation[];
         if(!operations.length){
           const reason=!row.chat_jid.endsWith("@g.us")&&!contacts.some(contact=>

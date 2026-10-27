@@ -31,6 +31,8 @@ export type OrderCandidate = {
   masterRaw: string;
   sourceTime: string;
   contactId?: string | null;
+  /** D/N when the order states a shift; supporting identity evidence only. */
+  shift?: string | null;
 };
 
 export type ConfirmationCandidate = {
@@ -41,6 +43,8 @@ export type ConfirmationCandidate = {
   masterRaw: string;
   sourceTime: string;
   contactId?: string | null;
+  /** D/N when the Admin reply states a shift; supporting identity evidence only. */
+  shift?: string | null;
 };
 
 export type MatchResult = {
@@ -49,6 +53,8 @@ export type MatchResult = {
   orderMessageId: string | null;
   candidateIds: string[];
   mobileEvidence: 'EXACT' | 'CORRECTED' | 'WEAK' | 'CONFLICT' | 'NONE';
+  /** Shift agreement is corroborating evidence, never a stand-alone match. */
+  shiftEvidence: 'AGREE' | 'CONFLICT' | 'UNVERIFIED';
   reasons: string[];
 };
 
@@ -161,6 +167,23 @@ export type MatchOptions = {
   canonicalChat?: (chatJid: string) => string;
 };
 
+/** D/N normalization; unknown tokens are preserved but never treated as equal. */
+export function normalizeShift(value?: string | null): string {
+  const shift = String(value ?? '').trim().toUpperCase();
+  if (!shift) return '';
+  if (shift === 'D' || shift === 'DAY' || shift === 'DAY SHIFT' || shift === 'দিন') return 'D';
+  if (shift === 'N' || shift === 'NIGHT' || shift === 'NIGHT SHIFT' || shift === 'রাত') return 'N';
+  return shift;
+}
+
+/** Shift agreement between one order and the Admin reply. */
+export function shiftEvidence(order: {shift?: string | null}, confirmation: {shift?: string | null}): 'AGREE' | 'CONFLICT' | 'UNVERIFIED' {
+  const a = normalizeShift(order.shift);
+  const b = normalizeShift(confirmation.shift);
+  if (!a || !b) return 'UNVERIFIED';
+  return a === b ? 'AGREE' : 'CONFLICT';
+}
+
 /**
  * Match one outgoing confirmation block against the client's order candidates.
  * Returns a single deterministic state; ambiguous evidence never resolves.
@@ -192,7 +215,7 @@ export function matchConfirmation(
 
   if (!candidates.length) {
     if (sameVessels.length) reasons.push('ORDER_OUTSIDE_TEMPORAL_WINDOW');
-    return { state: 'UNMATCHED', orderId: null, orderMessageId: null, candidateIds: [], mobileEvidence: 'NONE', reasons };
+    return { state: 'UNMATCHED', orderId: null, orderMessageId: null, candidateIds: [], mobileEvidence: 'NONE', shiftEvidence: 'UNVERIFIED', reasons };
   }
 
   // Score each candidate on vessel and mobile evidence; a conflict disqualifies it.
@@ -207,32 +230,47 @@ export function matchConfirmation(
 
   const viable = scored.filter((candidate) => candidate.mobile.kind !== 'CONFLICT');
   if (!viable.length) {
-    return { state: 'UNMATCHED', orderId: null, orderMessageId: null, candidateIds: candidates.map((c) => c.id), mobileEvidence: 'CONFLICT', reasons: ['MASTER_MOBILE_CONFLICT'] };
+    return { state: 'UNMATCHED', orderId: null, orderMessageId: null, candidateIds: candidates.map((c) => c.id), mobileEvidence: 'CONFLICT', shiftEvidence: 'UNVERIFIED', reasons: ['MASTER_MOBILE_CONFLICT'] };
   }
-  if (viable.length > 1) {
+  // Shift is corroborating evidence only: a shared shift may break a tie, but a
+  // shift alone can never create a match, and disagreement never confirms.
+  const confirmationShift = normalizeShift(confirmation.shift);
+  const preferred = confirmationShift
+    ? viable.filter((candidate) => normalizeShift(candidate.order.shift) === confirmationShift)
+    : [];
+  const pool = preferred.length ? preferred : viable;
+  if (pool.length > 1) {
     return {
       state: 'AMBIGUOUS',
       orderId: null,
       orderMessageId: null,
-      candidateIds: viable.map((c) => c.order.id),
+      candidateIds: pool.map((c) => c.order.id),
       mobileEvidence: 'EXACT',
+      shiftEvidence: 'UNVERIFIED',
       reasons: ['MULTIPLE_ORDER_CANDIDATES'],
     };
   }
 
-  const winner = viable[0];
+  const winner = pool[0];
+  const shift = shiftEvidence(winner.order, confirmation);
   const sameNames = winner.mother === 'SAME' && winner.lighter === 'SAME';
+  const shiftConflict = shift === 'CONFLICT'
+    ? { state: 'AMBIGUOUS' as const, orderId: null, orderMessageId: null, candidateIds: [winner.order.id], mobileEvidence: 'EXACT' as const, shiftEvidence: 'CONFLICT' as const, reasons: ['SHIFT_CONFLICT'] }
+    : null;
   if (winner.mobile.kind === 'EXACT') {
+    if (shiftConflict) return shiftConflict;
     return {
       state: sameNames ? 'EXACT' : 'VARIANT',
       orderId: winner.order.id,
       orderMessageId: winner.order.messageId ?? null,
       candidateIds: [winner.order.id],
       mobileEvidence: 'EXACT',
-      reasons: sameNames ? [] : ['VESSEL_SPELLING_VARIANT'],
+      shiftEvidence: shift,
+      reasons: [...(sameNames ? [] : ['VESSEL_SPELLING_VARIANT']), ...(shift === 'UNVERIFIED' ? ['SHIFT_UNVERIFIED'] : [])],
     };
   }
   if (winner.mobile.kind === 'CORRECTED') {
+    if (shiftConflict) return {...shiftConflict, mobileEvidence: 'CORRECTED'};
     const hasCorrection = !!options.corrections?.get(`${chat}|${vesselKey(winner.order.lighter)}`);
     return {
       state: 'CORRECTED',
@@ -240,7 +278,8 @@ export function matchConfirmation(
       orderMessageId: winner.order.messageId ?? null,
       candidateIds: [winner.order.id],
       mobileEvidence: 'CORRECTED',
-      reasons: [winner.mobile.reason ?? 'MASTER_MOBILE_ONE_DIGIT_DISCREPANCY', ...(hasCorrection ? [] : ['CORRECTION_MESSAGE_NOT_FOUND'])],
+      shiftEvidence: shift,
+      reasons: [winner.mobile.reason ?? 'MASTER_MOBILE_ONE_DIGIT_DISCREPANCY', ...(hasCorrection ? [] : ['CORRECTION_MESSAGE_NOT_FOUND']), ...(shift === 'UNVERIFIED' ? ['SHIFT_UNVERIFIED'] : [])],
     };
   }
   return {
@@ -249,6 +288,7 @@ export function matchConfirmation(
     orderMessageId: winner.order.messageId ?? null,
     candidateIds: [winner.order.id],
     mobileEvidence: 'WEAK',
+    shiftEvidence: shift,
     reasons: [winner.mobile.reason ?? 'MASTER_MOBILE_UNRESOLVED'],
   };
 }

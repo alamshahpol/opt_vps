@@ -116,6 +116,7 @@ export async function persistConfirmedProgram(client: DbClient, input: Confirmed
     orderMessageId: input.orderMessageId,
     confirmationMessageId: input.confirmationMessageId,
     confirmationSourceHash: input.confirmationSourceHash,
+    sourceMessageId: input.orderMessageId || null,
     matchState: input.matchState,
     mobileEvidence: input.mobileEvidence,
     motherKey: vesselKey(input.mother),

@@ -224,7 +224,7 @@ export function deriveEscortRegisterOps(account,messages,contacts,existingRows,a
  const scopedRows=existingRows.filter(r=>epoch==null||(value(r,'dataset_epoch','datasetEpoch')||epoch)===epoch);
  const known=scopedRows.map(rowForMatch).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
  const orderPool=scopedRows.filter(r=>value(r,'status')==='DRAFT'&&value(r,'account_id','accountId')===account.accountId)
-  .map(r=>({id:String(value(r,'id')),messageId:String(value(r,'source_message_id','sourceMessageId')),chatJid:String(value(r,'chat_jid','chatJid')),mother:String(value(r,'mother_vessel','motherVessel')),lighter:String(value(r,'lighter_vessel','lighterVessel')),masterRaw:String(r.parsed?.fields?.masterMobile??value(r,'master_mobile','masterMobile')??''),sourceTime:String(value(r,'source_time','sourceTime')),contactId:String(value(r,'client_contact_id','clientContactId'))}));
+  .map(r=>({id:String(value(r,'id')),messageId:String(value(r,'source_message_id','sourceMessageId')),chatJid:String(value(r,'chat_jid','chatJid')),mother:String(value(r,'mother_vessel','motherVessel')),lighter:String(value(r,'lighter_vessel','lighterVessel')),masterRaw:String(r.parsed?.fields?.masterMobile??value(r,'master_mobile','masterMobile')??''),sourceTime:String(value(r,'source_time','sourceTime')),contactId:String(value(r,'client_contact_id','clientContactId')),shift:String(value(r,'shift')||r.parsed?.shift||'')}));
  const ops=[];const existingHashes=new Set(scopedRows.map(r=>`${value(r,'account_id','accountId')}|${value(r,'source_hash','sourceHash')}|${value(r,'block_key','blockKey')}`));
  for(const message of messages){
   const sourceRoute=classifyBusinessSource(account,message,contacts,aliases,groupAuthorizations,cashScopeChats);
@@ -260,12 +260,17 @@ export function deriveEscortRegisterOps(account,messages,contacts,existingRows,a
    const assignmentDirection=message.direction==='OUTGOING'
     ||(message.direction==='INCOMING'&&message.chatJid?.endsWith('@g.us'));
    if(!assignmentDirection||!assignmentEvidenceFields(data))continue;
+   // Verified-Admin gate (opt-in): an outgoing row that is not from the paired
+   // Admin identity can never act as a confirmation, even in a client chat.
+   if(message.direction==='OUTGOING'&&options.requireVerifiedAdmin
+    &&typeof options.isVerifiedAdmin==='function'&&!options.isVerifiedAdmin(message))continue;
    // Owner rule: the actual outgoing Admin message in the same client conversation
    // is the confirmation. Matching uses conversation identity, vessel context,
    // Master Mobile digits (with one-digit/correction evidence) and chronology.
    const confirmationMatch=matchConfirmation(orderPool,{
     messageId:message.id,chatJid:message.chatJid,mother:data.motherVessel,lighter:data.lighterVessel,
     masterRaw:data.masterMobileRaw||data.masterMobile,sourceTime:message.sourceTime,contactId:contact.id,
+    shift:data.shift||null,
    },{windowDays:options.windowDays??30,corrections:options.corrections,canonicalChat});
    const candidates=confirmationMatch.orderId?[known.find(r=>r.id===confirmationMatch.orderId)].filter(Boolean):[];
    const key=businessKey(account.accountId,data);

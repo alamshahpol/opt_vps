@@ -108,3 +108,35 @@ test('same escort and date on different lighters stays distinct', () => {
   const base = { account: 'wa-01', clientChat: chat, mother: 'M', startDate: '2026-10-02', shift: 'D' };
   assert.notEqual(programIdFor({ ...base, lighter: 'L1' }), programIdFor({ ...base, lighter: 'L2' }));
 });
+
+test('shift agreement corroborates but never creates a match', () => {
+  const result = matchConfirmation([order({shift: 'N'})], confirmation({shift: 'N'}));
+  assert.equal(result.state, 'EXACT');
+  assert.equal(result.shiftEvidence, 'AGREE');
+  assert.equal(isConfirmable(result.state), true);
+});
+
+test('shift conflict downgrades an otherwise exact match to review', () => {
+  const result = matchConfirmation([order({shift: 'N'})], confirmation({shift: 'D'}));
+  assert.equal(result.state, 'AMBIGUOUS');
+  assert.equal(result.shiftEvidence, 'CONFLICT');
+  assert.equal(result.orderId, null);
+  assert.ok(result.reasons.includes('SHIFT_CONFLICT'));
+  assert.equal(isConfirmable(result.state), false);
+});
+
+test('shift breaks a tie between two legitimate same-vessel orders', () => {
+  const day = order({id: 'order-day', shift: 'D', sourceTime: '2026-10-01T05:00:00Z'});
+  const night = order({id: 'order-night', shift: 'N', sourceTime: '2026-10-01T12:00:00Z'});
+  const result = matchConfirmation([day, night], confirmation({shift: 'N'}));
+  assert.equal(result.state, 'EXACT');
+  assert.equal(result.orderId, 'order-night');
+  assert.equal(result.shiftEvidence, 'AGREE');
+});
+
+test('missing shift stays unverified and keeps legacy confirmation behaviour', () => {
+  const result = matchConfirmation([order()], confirmation());
+  assert.equal(result.state, 'EXACT');
+  assert.equal(result.shiftEvidence, 'UNVERIFIED');
+  assert.ok(result.reasons.includes('SHIFT_UNVERIFIED'));
+});
