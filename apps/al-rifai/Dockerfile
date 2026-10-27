@@ -29,7 +29,7 @@ COPY --from=build --chown=10001:10001 /app/.next/standalone ./
 COPY --from=build --chown=10001:10001 /app/node_modules/.pnpm/zod@3.25.76/node_modules/zod /app/node_modules/zod
 COPY --from=build --chown=10001:10001 /app/.next/static ./.next/static
 COPY --from=build --chown=10001:10001 /app/public ./public
-COPY --from=build --chown=10001:10001 /app/release/private-entry.mjs /app/release/start-private-app.mjs ./
+COPY --from=build --chown=10001:10001 /app/release/private-entry.mjs /app/release/start-private-app.mjs /app/release/entry-rules.mjs ./
 COPY --from=build --chown=10001:10001 /app/scripts/message-ingestion.ts /app/scripts/message-ingestion-worker.ts /app/scripts/message-mirror-worker.ts /app/scripts/process-cash.ts /app/scripts/process-vessel.ts /app/scripts/ingestion-db.ts /app/scripts/database.mjs /app/scripts/
 COPY --from=build --chown=10001:10001 /app/db/postgres.mjs /app/db/
 COPY --from=build --chown=10001:10001 /app/db/migrations/ /app/db/migrations/
