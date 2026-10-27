@@ -12,6 +12,20 @@
 
 ## 0. Current Production Position (verified 2026-10-27)
 
+> **Implementation update — 2026-10-27 (post-audit session):** source `main` is at
+> `c93762d` (base `d5dfef28…`). New tested modules: Cash user policy guards,
+> verified-Admin + shift confirmation evidence, duplicate classification,
+> configurable payroll engine, Admin order-draft review UI, WhatsApp TXT format
+> coverage, vessel report aggregates, and a **prepared but unapplied** Cash
+> review migration candidate. No production image, database, WhatsApp,
+> permission or Cash Freeze change occurred; the previously built candidate
+> `sha256:d6f274…` remains undeployed. See `NEXT-SESSION-HANDOFF.md` header
+> section for the full record.
+> **Staleness corrections:** `ALRIFAI_CASH_SUPER_ADMIN_IDS` is present (1 id);
+> §0.2 row counts drift daily; the Vessel confirmation writer exists and
+> `confirmation_message_id` is populated (123 rows) — see §0.3 rules which still
+> govern behaviour.
+
 This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.

@@ -1,5 +1,79 @@
 # Next-Session Handoff — Updated After Session 3
 
+## IMPLEMENTATION SESSION — 2026-10-27 (post-audit, authoritative for code state)
+
+### Source state
+- Branch `main`, commits: `9f00e17` (Cash user policy), `bde9799` (Vessel
+  confirmation integrity), `17358d1` (duplicate classification + payroll engine),
+  `58972b9` (Admin order drafts UI), `85a438c` (import formats + vessel reports),
+  `c93762d` (prepared Cash review migration + submission validation).
+  Base before this session: `d5dfef28…`.
+- Production unchanged: app image `sha256:049627fa…` running; candidate
+  `sha256:d6f274…` built but NOT deployed. No push to origin/main.
+
+### Completed (tested, committed)
+1. **Cash user security (A)** — `lib/cash-user-policy.ts` + route guards:
+   only a Super Admin may create/promote ADMINs, reset ADMIN passwords, or
+   edit/demote/deactivate ADMIN accounts; the final active ADMIN can never be
+   removed; USER targets remain editable by any ADMIN. Audit detail payloads now
+   record role/active before/after. Tests: `tests/cash-user-policy.mjs`.
+2. **Vessel confirmation integrity (B)** — verified-Admin sender gate wired into
+   `scripts/process-vessel.ts` (sender must match the paired Owner identity);
+   Shift is supporting evidence in `lib/vessel-match.ts` (conflict ⇒ AMBIGUOUS,
+   agreement may break ties); new programs persist
+   `details.sourceMessageId`. Tests: `tests/escort-confirmation-integrity.mjs`,
+   extended `tests/vessel-match.mjs`.
+3. **Duplicate classification (D)** — `lib/duplicate-identity.ts` implements the
+   ±1-day rule with alias-aware vessel matching, release-point/shift
+   normalization and EXACT/PROBABLE/AMBIGUOUS/DISTINCT explanations; only EXACT
+   replays are suppressible. Tests: `tests/duplicate-identity.mjs`.
+4. **Payroll engine (G)** — `lib/payroll-rules.ts` (configurable employee rate,
+   separate customer charge, additive transport, release-day policies
+   HALF_DAY_ENDS/INCLUSIVE/EXCLUSIVE, unresolved states). BDT 450 remains a
+   PROPOSED configurable default. Tests: `tests/payroll-rules.mjs`.
+5. **Admin order drafts (E)** — `lib/order-draft.ts` composes the draft from a
+   verified client order; Sources & Review has a new "Admin drafts" tab with
+   review, provenance, gap/warning display and Copy. No sending; WA tools
+   unchanged. Tests: `tests/order-draft.mjs`.
+6. **Reports/import (H)** — WhatsApp TXT parser now accepts plain/bracketed,
+   24-hour and AM/PM exports (occurrence ids preserved); read-only vessel report
+   aggregates + CSV in `lib/vessel-reports.ts`. Tests:
+   `tests/test_parse_import_formats.py` (8 passing), `tests/vessel-reports.mjs`.
+7. **Cash submission/approval (F, prepared)** — `lib/cash-submission.ts`
+   validation/hash (PENDING_REVIEW, no posting) and prepared migration candidate
+   `db/migration-candidates/0031_cash_instruction_reviews.sql` (append-only,
+   reviewer ≠ submitter, no UPDATE/DELETE grants, no postings). NOT applied.
+   Tests: `tests/cash-submission.mjs`.
+
+### Verification evidence (this session)
+- `pnpm test`: 111 tests, 110 pass, 0 fail (1 skipped).
+- `pnpm typecheck`: pass. `pnpm build`: pass. New/changed lint: clean.
+- Python parser tests: 8/8 pass.
+- Full-suite runs used the ephemeral `node:22.23.3-bookworm` container with the
+  evidence directory mounted read-only; no production access.
+
+### Still open (not implemented / blocked)
+- Register write UI (Add/Edit/Release/Assignment) and program UPDATE grants:
+  BLOCKED on Owner decision (restore UPDATE vs SECURITY DEFINER commands).
+- Draft delivery to the Admin via WhatsApp: BLOCKED — no outbound authorization.
+- Cash submission/approval endpoints + migrations: prepared only; need Owner
+  authorization and an isolated DB rehearsal.
+- Register CONFIRMED state/Running/attendance: unimplemented.
+- Salary business meaning of BDT 450, release-day policy and transport approval:
+  Owner decision required.
+- Image-to-commit traceability and deployment: pending Owner approval.
+
+### Corrections to earlier documentation
+- `ALRIFAI_CASH_SUPER_ADMIN_IDS` is **present** (1 id) — earlier "absent"
+  statements are stale.
+- Vessel register counts drift daily; treat AGENTS §0.2 figures as historical.
+- `docs/VESSEL-WORKFLOW.md` claims "no confirmation writer / 0 programs /
+  confirmation_message_id never populated" were stale; the writer and 79
+  programs exist. Its L369–370 notes about `Lighter Name:`/serial stripping are
+  also stale (both implemented).
+
+---
+
 ## Session 3 Summary (2026-10-21)
 
 ### Completed

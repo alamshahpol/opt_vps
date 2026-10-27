@@ -274,6 +274,28 @@ but keeps its own identity set, scope and processor:
 
 ---
 
+## 8a. Implementation update — 2026-10-27 (post-audit session)
+
+The §9/§10 snapshot below is **historical and partially stale**. Verified current
+state at source `c93762d`:
+
+- A confirmation→program writer exists (`lib/vessel-ops.ts:persistConfirmedProgram`
+  called from `scripts/process-vessel.ts`); 79 canonical `Confirmed` programs and
+  123 rows with `confirmation_message_id` exist. `persistOperation` still blocks
+  any transition other than DRAFT/REVIEW (append-only evidence).
+- Confirmation senders are now gated to the verified Admin identity (paired
+  Owner PN/LID) in the live processor; other outgoing rows are ignored.
+- Shift is compared as supporting evidence in `lib/vessel-match.ts`: agreement
+  may break a tie, disagreement routes to `AMBIGUOUS`/review; it never creates a
+  match on its own.
+- New programs persist `details.sourceMessageId` for source traceability.
+- An Admin draft composer (`lib/order-draft.ts`) powers a read-only review and
+  Copy surface in Sources & Review. **No WhatsApp sending is enabled.**
+- Duplicate classification is consolidated in `lib/duplicate-identity.ts`
+  (EXACT/PROBABLE/AMBIGUOUS/DISTINCT, ±1-day rule preserved, aliases supported).
+- Still missing: register `CONFIRMED` state/event, Running/attendance, draft
+  persistence/delivery columns, program write UI/grants.
+
 ## 9. Current implementation map
 
 | Concern | Implementation | State |

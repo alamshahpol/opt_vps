@@ -4,7 +4,31 @@ This section supersedes older status notes below. Verified against the running
 application and database on 2026-10-27.
 
 ## Architecture
-- One PostgreSQL database `alrifai`; one application container `al-rifai-app-1`.
+
+### Unified platform UI (read-only surfaces, 2026-10-27)
+
+`/dashboard`, `/transactions`, `/employees`, `/sources-review`, `/insights`,
+`/income-expenditure`, `/archive` and `/assistant` share one authenticated shell
+(`app/platform/`). They only read verified APIs (`/api/operations`,
+`/api/escort-register`, `/api/register`, `/api/assistant`); every write action is
+disabled with its dependency explained. Legacy screens (`/cash`, `/vessel`,
+`/register`, `/conversations`, `/review`, `/message-mirror`, `/cash/archive`)
+remain unchanged and linked.
+
+New tested domain modules added in the same session:
+
+| Module | Purpose |
+|---|---|
+| `lib/cash-user-policy.ts` | Super-Admin-only ADMIN management, last-admin protection |
+| `lib/vessel-match.ts` (extended) | Shift evidence in confirmation matching |
+| `lib/duplicate-identity.ts` | EXACT/PROBABLE/AMBIGUOUS/DISTINCT duplicate classification |
+| `lib/payroll-rules.ts` | Configurable duty/pay engine; BDT 450 proposed only |
+| `lib/order-draft.ts` | Admin order draft composition (no sending) |
+| `lib/vessel-reports.ts` | Read-only mother/lighter/escort/date aggregates + CSV |
+| `lib/cash-submission.ts` | PENDING_REVIEW submission validation (no posting) |
+| `db/migration-candidates/0031_*` | **Prepared, unapplied** append-only Cash review schema |
+
+---- One PostgreSQL database `alrifai`; one application container `al-rifai-app-1`.
 - WA-01 / Bridge-1 is the authorized source for Cash and Vessel messages; its
   verified paired account is the WhatsApp Admin identity. WA-02 is identity-only.
 - Message mirror: bridge SQLite `/runtime/store/messages.db` → PostgreSQL
