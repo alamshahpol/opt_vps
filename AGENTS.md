@@ -13,7 +13,8 @@
 ## 0. Current Production Position (verified 2026-10-27)
 
 > **Implementation update — 2026-10-27 (session 2):** source `main` is at
-> `2805879`. Added: Cash submission/approval API + `/cash/submissions` queue UI
+> `765835c` (feature commits `b8bd93d`, `1c604be`, `2805879`). Added: Cash
+> submission/approval API + `/cash/submissions` queue UI
 > (returns a migration-dependency response until the prepared schema is applied),
 > rehearsed candidate migrations `0031` (append-only submissions/reviews) and
 > `0032` (Vessel SECURITY DEFINER command layer), shadow duplicate classifier
