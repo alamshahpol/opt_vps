@@ -1,5 +1,48 @@
 # Next-Session Handoff — Updated After Session 3
 
+## FINAL SYSTEM STATE — 2026-10-27 (safe stop, Owner break)
+
+**Start here next session.**
+
+| Item | Value |
+|---|---|
+| Production image | `sha256:34ce306018641a4c074d07c67acfd6e9800197764904ae4a7862615f43e6b3a5` |
+| Released source commit | `2881926` (packaging fix); compose pin committed |
+| Git HEAD / sync | `dc3b92b` (docs) · `origin/main` synchronized · working tree clean |
+| App health | healthy, 0 restarts; workers running ("Live Cash continuation started (review-only)") |
+| PostgreSQL | healthy, Up 9 days, 30 ledger rows |
+| WA-01 / WA-02 | Up (no container healthcheck by design); MCP sockets present; no sends |
+| Cash Freeze | intact — 1,842 current-epoch instructions, **0 current postings**; posting env absent |
+| Database backup | `/var/backups/vps/alrifai-pre-0031-0032-20261027T203833Z.dump` (63.8 MB) · sha256 `e38086b30390426b756054b6900634fa250b30b667dd5ee37498245f433d10e0` (re-verified) |
+| Compose backup | `/var/backups/vps/al-rifai-compose-20261027T204929Z.yaml` |
+| Rollback image | `sha256:049627fa8eb3c95aaed45b0fa2ac29b97965ca74e8bf44b6541a696f687a3963` (present) |
+| Migrations 0031/0032 | **READY FOR OWNER APPROVAL — not applied** (hashes + commands in `docs/MIGRATION-READINESS-0031-0032.md`) |
+
+### Rollback (application only)
+```bash
+cd /opt/vps/apps/al-rifai
+cp /var/backups/vps/al-rifai-compose-20261027T204929Z.yaml compose.yaml
+docker compose -p al-rifai up -d --no-deps app
+docker inspect al-rifai-app-1 --format '{{.Image}}'   # expect 049627fa…
+curl -fsS http://127.0.0.1:3000/api/health
+```
+
+### Known risk register
+1. Migrations 0031/0032 are absent, so `/cash/submissions` shows the dependency
+   banner and `/vessel-register` commands are disabled — expected and safe.
+2. WhatsApp TXT import runtime lacks the Python parser in the image; import API is
+   not exposed in the deployed UI (deferred, needs image change).
+3. Legacy `programs` UPDATE remains revoked; command layer is the intended path.
+4. `ALRIFAI_VESSEL_COMMAND_ACTOR` is unset (falls back to Cash Owner person ref)
+   until migrations are approved and an actor is confirmed.
+
+### Next-session starting point
+Apply 0031 → 0032 with the documented backup/verification sequence (Owner
+approval gate), verify post-migration checks, then run the read-only acceptance
+probes and update the handoff. No other implementation cycle is open.
+
+---
+
 ## CONTROLLED RELEASE — 2026-10-27 (application-only, migrations NOT applied)
 
 - Source `main` at `2881926` (release fix); pushed fast-forward to

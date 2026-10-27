@@ -12,12 +12,15 @@
 
 ## 0. Current Production Position (verified 2026-10-27)
 
-> **Release — 2026-10-27 (application-only):** release commit `2881926` (compose
-> pin committed in `6213833`+) deployed as image
-> `sha256:34ce3060…` (candidate `d6f274…` superseded; first attempt rolled back
-> over a missing worker module, fixed and redeployed). Migrations 0031/0032
-> remain unapplied; Cash Freeze intact (0 current postings). Backups and
-> rollback image recorded in NEXT-SESSION-HANDOFF.md. Source pushed to origin.
+> **Release — 2026-10-27 (application-only, FINAL):** release commit `2881926`
+> deployed as image `sha256:34ce3060…` (candidate `d6f274…` superseded; first
+> attempt rolled back over a missing worker module, fixed and redeployed).
+> Migrations 0031/0032 are READY FOR OWNER APPROVAL and NOT applied; Cash Freeze
+> intact (1,842 instructions / 0 current postings). Verified DB backup sha256
+> `e38086b3…`, compose backup, rollback image `049627fa…`, and exact next steps
+> are in the FINAL SYSTEM STATE section of NEXT-SESSION-HANDOFF.md. Source
+> pushed to origin; working tree clean. Do not start a new implementation cycle
+> without Owner direction.
 >
 > **Implementation update — 2026-10-27 (session 3):** source `main` at
 > `2881926` (feature commits `6df2352`, `53b7ae3`; release fix `2881926`). Added the Vessel command API (`/api/vessel-programs`) and

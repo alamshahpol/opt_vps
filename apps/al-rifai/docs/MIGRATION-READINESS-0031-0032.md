@@ -1,7 +1,18 @@
 # Migration Readiness — 0031 Cash Submissions & 0032 Vessel Commands
 
-Status: **PREPARED, REHEARSED, NOT APPLIED**. Production migrations require
-separate Owner approval. This document is the review pack for that decision.
+Status: **READY FOR OWNER APPROVAL — PREPARED, REHEARSED, NOT APPLIED**.
+
+Verified 2026-10-27 (final handoff):
+- Production backup `/var/backups/vps/alrifai-pre-0031-0032-20261027T203833Z.dump`,
+  sha256 `e38086b30390426b756054b6900634fa250b30b667dd5ee37498245f433d10e0`
+  (checksum re-verified against the recorded file).
+- Isolated restore rehearsal succeeded; live counts matched; applying both
+  migrations to the restored clone changed no business row.
+- Migration file hashes:
+  - 0031 `f803dbc6d7a5e49bf96a95c2cab2b92d2c88c457a258e912302c5d3338109202`
+  - 0032 `25ee46143f1841ccc894cad099d8734f350641390122b807d64410b428ac3a3c`
+- Production schema unchanged: 30 ledger rows; `cash_submissions` and the
+  vessel command functions are absent; Cash Freeze intact (0 current postings).
 
 ## 1. Exact schema changes
 
@@ -78,10 +89,11 @@ full 0000–0032 chain on a throwaway container on every run.
 ## 8. Execution commands (after approval; not run in this session)
 ```bash
 cd /opt/vps/apps/al-rifai
-psql "$PGURL" -v ON_ERROR_STOP=1 -1 -f db/migration-candidates/0031_cash_submissions_and_reviews.sql
-psql "$PGURL" -v ON_ERROR_STOP=1 -1 -f db/migration-candidates/0032_vessel_program_commands.sql
+# Each file already wraps BEGIN/COMMIT — do NOT add -1 (it nests transactions).
+psql "$PGURL" -v ON_ERROR_STOP=1 -f db/migration-candidates/0031_cash_submissions_and_reviews.sql
+psql "$PGURL" -v ON_ERROR_STOP=1 -f db/migration-candidates/0032_vessel_program_commands.sql
 ```
-Each file is wrapped in BEGIN/COMMIT; abort on the first error.
+Each file aborts on the first error and rolls back its own transaction.
 
 ## 9. Post-migration verification
 - `to_regclass('public.cash_submissions')`, `to_regclass('public.cash_submission_reviews')`,
