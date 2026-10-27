@@ -1189,3 +1189,133 @@ employee merges, or deployments without Owner authorization.
 1. Run `reconcile-vessel-assignments.mjs --apply` (11 confirmed programs).
 2. Deploy the new image (compose pin + recreate app only).
 3. Live end-to-end verification with a genuine new authorized message.
+
+---
+
+## GITHUB SOURCE CONTROL AND SESSION HANDOFF — 2026-10-27 (authoritative)
+
+This section supersedes every earlier Git/GitHub note in this file. Earlier
+sections remain dated historical evidence for business work.
+
+### A. Session summary
+- Repaired the broken repository architecture: three gitlinks without
+  `.gitmodules` were replaced by ordinary tracked source directories.
+- Imported the complete application, WhatsApp bridge/MCP server, infrastructure
+  and operational documentation into one monorepo and pushed it to GitHub.
+- Removed a stray credential from `apps/al-rifai/.env.example` before publishing.
+- Created MD5/SHA-1/SHA-256 integrity manifests for the source snapshot.
+- Updated `docs/VPS_MAP.md`, `AGENTS.md` and this handoff.
+- No production container, database row, WhatsApp session or permission was
+  changed by this Git work.
+
+### B. Git architecture
+- Root: `/opt/vps`; branch `main`; remote
+  `git@github.com:arshiyaazim/opt_vps.git`.
+- Tracked: `apps/al-rifai/`, `services/whatsapp/source/`,
+  `services/whatsapp/compose.yaml`, `infra/`, `docs/`, root documents.
+- No gitlinks, no `.gitmodules`, no nested repositories remain in the tree.
+- Former nested histories are preserved as verified bundles and bare clones in
+  `/var/lib/vps/al-rifai/backups/git-20261027/`:
+  `apps-al-rifai.git`, `whatsapp-source.git`,
+  `apps-al-rifai-history-20261027.bundle`,
+  `whatsapp-source-history-20261027.bundle`,
+  `opt-vps-pre-github-20261027.bundle`,
+  `staging-cash-history-20261027.bundle`.
+- `staging/cash-standalone-readonly-projection-20261017` remains a separate
+  checkout of `arshiyaazim/wa_msg_to_auto_respoder` and is intentionally ignored.
+- The previous local history is retained on branch
+  `archive/pre-github-20261027` (not published).
+
+### C. GitHub status
+- Repository `arshiyaazim/opt_vps` (public; Owner approved publishing on
+  2026-10-27).
+- Source snapshot commit: `06356b6e2c2b92fbf120d2b8350d0a9c1917b28e`.
+- Documentation + integrity manifest commit: the HEAD of `main`; read it with
+  `git rev-parse HEAD` (never hardcode a SHA that has not been pushed).
+- Push verification: remote `refs/heads/main` must equal local `HEAD`; a clean
+  clone must contain `apps/al-rifai/package.json`,
+  `services/whatsapp/source/whatsapp-bridge/main.go` and
+  `services/whatsapp/source/whatsapp-mcp-server/native_reader.py`.
+
+### D. Production baseline (verified 2026-10-27)
+- App container `al-rifai-app-1`, image
+  `sha256:049627fa8eb3c95aaed45b0fa2ac29b97965ca74e8bf44b6541a696f687a3963`.
+- WA-01 `vps-whatsapp-wa-01-cap4-20261011`, image
+  `sha256:ae009303de09f564390d14a5ef1f7c30018040b52a73074f273a8dd67683bb33`.
+- WA-02 `vps-whatsapp-wa-02-cap4-20261011` unchanged (identity-only).
+- PostgreSQL `vps-infra-postgres-1`, database `alrifai`.
+- Cash Freeze intact; no postings, no approvals, no settlement.
+
+### E. Cash and Vessel state
+- Cash Current: 1,819 instructions / BDT 939,889.00, 0 postings, 180 employee
+  IDs, 309 payout numbers, all REVIEW. Archive: 1,610 instructions, 1,586
+  legacy postings.
+- Vessel: 377 register rows (206 DRAFT / 171 REVIEW), 75 confirmed programs,
+  75 assignments, newest confirmed `startDate` 2026-10-25. 37 REVIEW rows still
+  carry `ASSIGNMENT_EVIDENCE_INCOMPLETE`; 3 reconciliation candidates remain
+  unmatched in REVIEW.
+- Owner-reported "BDT 945,890" is not reproducible from any canonical row,
+  posting, candidate or duplicate; the ledger total is BDT 939,889.
+
+### F. WhatsApp live E2E (verified)
+- Group identity fix deployed: the reader admits the paired Admin PN/LID for its
+  own outgoing group messages and admits a client LID only when the bridge store
+  resolved that same message to an allowlisted PN.
+- Recovered events 1327 (Office group, Admin outgoing), 1328/1329 (client LID in
+  an approved group).
+- Genuinely new live messages after the fix: event 1333 (Owner test message,
+  mirrored once, vessel `NOT_VESSEL_INTENT`, no business row) and events
+  1330–1332 (Accountant LID, cash `NOT_OWNER_OUTGOING`, no Cash row).
+- Cursors: all 9 approved chats advanced with no error; 2/2 Cash channels clean.
+
+### G. Source integrity
+- `docs/SOURCE_INTEGRITY_MANIFEST.txt` — size, SHA-256, SHA-1, MD5 for all 554
+  tracked files of source snapshot `06356b6`.
+- Companions: `docs/SOURCE_INTEGRITY_MANIFEST.sha256` (primary),
+  `.sha1`, `.md5`.
+- Verify:
+  ```bash
+  git archive --format=tar 06356b6e2c2b92fbf120d2b8350d0a9c1917b28e | tar -x -C /tmp/alrifai-snapshot
+  cd /tmp/alrifai-snapshot && sha256sum -c docs/SOURCE_INTEGRITY_MANIFEST.sha256
+  ```
+- The manifest covers the source snapshot, not the later documentation commit.
+
+### H. Security
+- Excluded from Git: `.env`/secret files, WhatsApp session and message stores,
+  `apps/al-rifai/data/*` (except `conversation-policy.json`), `import/`,
+  `staging/`, all `qualification/` evidence, `node_modules`, `.next`, `.venv`,
+  `.pnpm-store`, dumps, logs and archives.
+- A 64-character credential was removed from `apps/al-rifai/.env.example`; the
+  original is preserved locally (mode 0600) at
+  `/var/lib/vps/al-rifai/backups/git-20261027/app-env-example-with-leaked-token.bak`.
+- Secret scan of the published tree: no private keys, GitHub/AWS/Slack/OpenAI
+  tokens or password values. Remaining phone-number-like strings are synthetic
+  test fixtures.
+- Risk: the repository is public, so infrastructure paths and operational
+  documentation are world-readable. No runtime secret is published.
+
+### I. Recovery
+- Source: `git clone git@github.com:arshiyaazim/opt_vps.git` (or HTTPS).
+- Nested history: `git clone /var/lib/vps/al-rifai/backups/git-20261027/apps-al-rifai.git`
+  or restore from the corresponding `.bundle` with `git clone <bundle>`.
+- Runtime data is **not** in Git. Restore business data only from PostgreSQL
+  backups (`/var/lib/vps/al-rifai/backups/`) following the existing recovery
+  procedure; never overwrite live volumes from a clone.
+
+### J. Pending work
+- Image-to-commit traceability: the running app/WA-01 images predate the source
+  commit; record commit + digest together on the next approved deployment.
+- Cash: no genuinely new Owner→Accountant instruction has been observed live yet;
+  the next real instruction should produce a REVIEW row and no posting.
+- Vessel: 3 unmatched reconciliation candidates and 37 incomplete REVIEW rows
+  remain for Owner/business review.
+- Owner-reported BDT 945,890 still needs the exact screen/tab to reconcile.
+
+### K. Next-session starting instructions
+1. Read this section, then `AGENTS.md` §0, §2.4 and §12.
+2. Verify production read-only: `docker ps`, app `/api/health`, Cash/Vessel counts.
+3. Verify source state: `cd /opt/vps && git status --short && git log --oneline -3`.
+4. Do not restart, redeploy, migrate, post, approve or re-pair without explicit
+   Owner authorization.
+5. For source changes: edit, test in an isolated environment, commit with a clear
+   message, push `main`, and regenerate the integrity manifest for the release.

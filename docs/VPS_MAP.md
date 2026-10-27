@@ -516,12 +516,48 @@ historical evidence.
 Older sections above are historical evidence; this section reflects the running
 system.
 
-### Repository and deployment traceability (2026-10-27)
-- VPS repo: `https://github.com/arshiyaazim/opt_vps.git`, branch `main`, HEAD
-  `39ce58fe10bb7bbe747325295e452cbd09561bee`.
-- App directory `/opt/vps/apps/al-rifai` is a nested independent repository with
-  the same remote URL (no `.gitmodules`), branch `main`, HEAD
-  `6b9b18d9f10d8a0cf76e6d95d45c0b89207c0816`. Parent indexes it as a gitlink.
-- The deployed image was built from the working tree (uncommitted changes), so
-  commit-level image traceability is not established. Local changes are not
-  committed or pushed.
+### Source control, repository architecture and deployment traceability (2026-10-27)
+
+- **Repository root:** `/opt/vps` — single monorepo, branch `main`.
+- **Remote:** `git@github.com:arshiyaazim/opt_vps.git` (SSH, authenticated as
+  `arshiyaazim`). The repository is **public**; publishing was explicitly
+  approved by the Owner on 2026-10-27.
+- **Final architecture:** the former nested repositories were flattened into
+  ordinary tracked directories. No gitlinks and no `.gitmodules` remain.
+  - `apps/al-rifai/` — Next.js application, Cash/Vessel domain, `db/`
+    migrations, scripts and tests.
+  - `services/whatsapp/source/` — Go bridge and Python MCP server
+    (including `native_reader.py` PN/LID validation).
+  - `services/whatsapp/compose.yaml`, `infra/`, `docs/`, root operational
+    documents.
+- **Nested history preservation:** verified bundles and bare clones of the former
+  repositories are stored in
+  `/var/lib/vps/al-rifai/backups/git-20261027/`:
+  `apps-al-rifai.git`, `whatsapp-source.git`,
+  `apps-al-rifai-history-20261027.bundle`,
+  `whatsapp-source-history-20261027.bundle`,
+  `opt-vps-pre-github-20261027.bundle`,
+  `staging-cash-history-20261027.bundle`.
+- **Excluded from Git (kept locally):** runtime data, credentials and secret
+  files, WhatsApp session and message stores, `apps/al-rifai/data/*` (except
+  `conversation-policy.json`), `import/`, `staging/`, all `qualification/`
+  evidence trees, `node_modules`, `.next`, `.venv`, `.pnpm-store`, database
+  dumps, logs and archives. `.gitignore` is the authority.
+- **Source snapshot:** commit `06356b6` (application + bridge + infrastructure
+  import). Documentation and the integrity manifest are committed immediately
+  after it; see the handoff for the final HEAD.
+- **Integrity manifest:** `docs/SOURCE_INTEGRITY_MANIFEST.txt` plus
+  `.sha256` (primary), `.sha1` and `.md5` companion files. Verify with:
+  ```bash
+  git archive --format=tar <source_commit> | tar -x -C /tmp/alrifai-snapshot
+  cd /tmp/alrifai-snapshot && sha256sum -c docs/SOURCE_INTEGRITY_MANIFEST.sha256
+  ```
+- **Deployment relationship:** the currently running app image
+  `sha256:049627fa…` and WA-01 image `sha256:ae009303…` were built from the
+  working tree before this commit. Future deployments must record the source
+  commit SHA and the image digest together.
+- **Recovery:** a clean clone contains the application, bridge and
+  infrastructure source only; it never contains production runtime data,
+  sessions, credentials or business rows. Restoring business data remains the
+  separate PostgreSQL backup procedure described above.
+

@@ -25,30 +25,34 @@ wins.
 - Bridge SQLite (`/runtime/store/messages.db`) is transport evidence; the
   PostgreSQL mirror (`whatsapp_messages_original`) is the application source.
 
-### 0.2 Verified data (2026-10-27)
+### 0.2 Verified data (2026-10-27, after Cash/Vessel recovery)
 - Cash Current: 1,819 instructions / BDT 939,889.00, 0 postings, all REVIEW.
   Cash Archive: 1,610 instructions / 1,586 postings (legacy epoch).
-- Vessel Current: 377 register rows (206 DRAFT / 171 REVIEW), 64 confirmed
-  programs, 64 assignments. Archive: 608 register rows, 5 draft programs.
-- 64 REVIEW rows are confirmed-linked evidence; 107 are actionable review.
-- 16 programs have unresolved Employee Master links (no safe match exists).
+- Vessel Current: 377 register rows (206 DRAFT / 171 REVIEW), 75 confirmed
+  programs, 75 assignments; newest confirmed `startDate` 2026-10-25.
+  Archive: 608 register rows, 5 draft programs.
+- 37 REVIEW rows still carry `ASSIGNMENT_EVIDENCE_INCOMPLETE`; the 11 verified
+  October assignments were reconciled into confirmed programs (6 EXACT, 5
+  VARIANT) and 3 unmatched candidates remain in REVIEW.
+- The reported Owner figure "BDT 945,890" is not reproducible from any canonical
+  row, posting, candidate or duplicate; the ledger total is BDT 939,889.
 
-### 0.2.1 Verified production defects and pending verification (2026-10-27)
-- **Cash UI blocked:** `/api/cash/summary` requires `ALRIFAI_CASH_SUPER_ADMIN_IDS`
-  to contain the logged-in portal user id. The variable is **not present** in the
-  container environment, `compose.yaml` or `app.env`, so the ADMIN portal user
-  receives `SUPER_ADMIN_REQUIRED` (403) and the Cash page shows no rows. Do not
-  "fix" this by changing permissions or business data; the exact configuration
-  correction needs Owner authorization.
-- **Vessel freshness:** the newest confirmed program has `startDate` 2026-10-10
-  (16 programs in October, none later). The register UI also hardcodes
-  "Updated conversations through 06 Oct 2026" and derives its source label from
-  the evidence-snapshot date. Register activity after 2026-10-10 exists as
-  DRAFT/REVIEW rows in Escort intake, not as confirmed programs.
-- **GitHub:** SSH authentication as `arshiyaazim` and the first-push dry run
-  succeeded, but the remote `arshiyaazim/opt_vps` currently has **0 refs**; no
-  push has occurred. Local work is uncommitted (VPS repo 9 entries, app repo
-  115). Do not commit, push or change remotes without Owner authorization.
+### 0.2.1 Resolved defects and current verification state (2026-10-27)
+- **Cash UI (RESOLVED):** the deployed app image contains the Cash aggregates,
+  pagination and `ALRIFAI_CASH_SUPER_ADMIN_IDS`; the Owner confirmed the new
+  frontend is visible (1,819 rows, BDT 939,889, Posted BDT 0, 19 pages).
+- **Vessel freshness (RESOLVED):** the UI now shows canonical confirmed
+  programs, latest program start, latest register activity and Draft/Review
+  counts with working intake navigation.
+- **WA-01 group identity (RESOLVED):** the native reader admits (a) the paired
+  Admin PN/LID for its own outgoing group messages and (b) a client LID only
+  when the bridge store resolved that same message to an allowlisted PN.
+  Deployed bridge image `sha256:ae009303de09f564390d14a5ef1f7c30018040b52a73074f273a8dd67683bb33`;
+  all 9 approved chats ingest with no error.
+- **GitHub (COMPLETED):** repository architecture repaired and source pushed;
+  see §2.4 and `NEXT-SESSION-HANDOFF.md` (GitHub section). Commits are now
+  expected for source changes; production deployment still requires Owner
+  approval and must record the deployed commit.
 
 ### 0.3 Business rules that must not be re-litigated
 - Only the three authorized Escort Clients originate Vessel Orders; only the
@@ -77,21 +81,30 @@ canonical row is silently overwritten. 6. Confirm no financial posting or
 auto-confirmation.
 
 ### 0.6 Verification state
-- Authenticated Owner UI and a new authorized-message end-to-end pass are NOT
-  VERIFIED. Do not claim them without real evidence.
+- Authenticated Owner Cash UI is **VERIFIED** by Owner confirmation (new
+  frontend, 75 Vessel programs, updated Cash dashboard).
+- Live WhatsApp E2E is **VERIFIED** for capture → identity → mirror → domain
+  routing: Office-group event 1327 and client events 1328/1329 were recovered,
+  and a genuinely new Owner message (event 1333) plus three new Accountant
+  messages (events 1330–1332) were mirrored once each and classified
+  `NOT_VESSEL_INTENT` / `NOT_OWNER_OUTGOING` with no business row created.
 - Review age (presentation-only, source timestamps): 95 recent / 12 legacy /
-  0 date-unknown among 107 actionable rows; 16 unresolved employee links
-  (14 recent / 2 legacy).
-- Repositories: VPS `https://github.com/arshiyaazim/opt_vps.git` (HEAD 39ce58f);
-  `apps/al-rifai` is a nested repo with the same remote (HEAD 6b9b18d). The
-  deployed image was built from the uncommitted working tree, so image-to-commit
-  traceability is NOT VERIFIED. Do not commit/push/change remotes without Owner
-  authorization.
-- Deployed image: `sha256:07063c640bdf4b4d0267405ef5fb63946a81718b9ca61aa747a30b99e391eddc`,
-  built from the working tree (no commit-level traceability).
-- Authenticated Owner Cash UI recovery and Vessel 2026-10-11..27 end-to-end
-  completion remain **NOT VERIFIED**; the Cash UI is additionally blocked by the
-  missing super-admin allowlist (§0.2.1).
+  0 date-unknown among 107 actionable rows; unresolved employee links remain.
+- Repositories: monorepo `/opt/vps` (branch `main`, remote
+  `git@github.com:arshiyaazim/opt_vps.git`). Application and WhatsApp source are
+  ordinary tracked directories; nested `.git` directories were archived under
+  `/var/lib/vps/al-rifai/backups/git-20261027/`. See §2.4.
+- Deployed app image:
+  `sha256:049627fa8eb3c95aaed45b0fa2ac29b97965ca74e8bf44b6541a696f687a3963`.
+  Deployed WA-01 image:
+  `sha256:ae009303de09f564390d14a5ef1f7c30018040b52a73074f273a8dd67683bb33`.
+  Both were built from the working tree before the source commit; record the
+  commit SHA in every future deployment note.
+- Source integrity: `docs/SOURCE_INTEGRITY_MANIFEST.txt` (plus `.sha256`,
+  `.sha1`, `.md5`) covers source snapshot commit `06356b6`.
+- Remaining limitation: the deployed images predate the source commit, so
+  image-to-commit traceability is still NOT VERIFIED for the currently running
+  containers.
 - Reference documents: `docs/VESSEL-WORKFLOW.md` (business rules),
   `NEXT-SESSION-HANDOFF.md` (state), `docs/VPS_MAP.md` (infrastructure).
 
@@ -164,6 +177,35 @@ Preserve approved work and report exact changed paths and validation evidence.
 ### 2.3 Python
 - AL-RIFA'I app runtime does **not** use Python.
 - Host Python exists for VPS tooling only; there is no project venv.
+
+### 2.4 Git and GitHub source control
+- **Repository:** `/opt/vps` is the single monorepo; remote
+  `git@github.com:arshiyaazim/opt_vps.git`, branch `main`.
+- **Tracked source:** `apps/al-rifai/` (Next.js app, Cash/Vessel domain, db
+  migrations, scripts, tests), `services/whatsapp/source/` (Go bridge + Python
+  MCP server), `services/whatsapp/compose.yaml`, `infra/`, `docs/` and the root
+  operational documents.
+- **Not tracked (must stay local):** runtime data, credentials, WhatsApp
+  session/message stores, `apps/al-rifai/data/*`, `import/`, `staging/`,
+  `qualification/` evidence, `node_modules`, `.next`, `.venv`, `.pnpm-store`,
+  dumps, logs and archives. `.gitignore` encodes this.
+- **Nested histories:** the former nested repositories (`apps/al-rifai`,
+  `services/whatsapp/source`) were flattened. Their full histories are preserved
+  as verified bundles and bare clones in
+  `/var/lib/vps/al-rifai/backups/git-20261027/`. Do not delete that directory.
+- **Commands:**
+  ```bash
+  cd /opt/vps
+  git status --short
+  git add -A && git commit -m "<scope>: <change>"   # source change
+  git push origin main
+  ```
+- **Rules:** never commit `.env`/secrets or runtime data; never force-push;
+  never rewrite published history; production deploy/restart still needs Owner
+  approval and must record the deployed commit SHA and image digest.
+- **Integrity:** `docs/SOURCE_INTEGRITY_MANIFEST.txt` (SHA-256 primary, SHA-1 and
+  MD5 supplementary) with companion `.sha256`/`.sha1`/`.md5` files; regenerate
+  for each release commit.
 
 ---
 
@@ -455,8 +497,10 @@ Then rebuild image and recreate bridges.
 
 ### Current Blockers Reference
 
-See `NEXT-SESSION-HANDOFF.md`, **FINAL OPERATIONAL HANDOFF — 2026-10-27**, for
-the current production snapshot, VERIFIED / IMPLEMENTED BUT NOT VERIFIED /
-NEEDS REVIEW / BLOCKED status, review-age counts and safe next steps. The
-2026-10-24 and 2026-10-25 sections remain historical evidence and are superseded
-by the 2026-10-27 section and by §0 of this file.
+See `NEXT-SESSION-HANDOFF.md`, **GITHUB SOURCE CONTROL AND SESSION HANDOFF —
+2026-10-27 (authoritative)**, for the current production snapshot, the final Git
+architecture, GitHub push verification, the source integrity manifest and the
+safe next steps. The 2026-10-24, 2026-10-25 and earlier 2026-10-27 sections
+remain historical evidence and are superseded by that section and by §0 of this
+file. Source changes now follow §2.4; production actions still require Owner
+approval.
