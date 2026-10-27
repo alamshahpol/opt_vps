@@ -9,6 +9,7 @@ export type NavItem={
 
 export const NAV_ITEMS:NavItem[]=[
   {href:"/dashboard",label:"Dashboard",icon:"LayoutDashboard",description:"Unified financial, workforce and review overview"},
+  {href:"/vessel-register",label:"Vessel Register",labelBn:"ভেসেল রেজিস্টার",icon:"Ship",description:"Programs, assignments, release, void and audit history"},
   {href:"/transactions",label:"Transactions",labelBn:"লেনদেন",icon:"ArrowLeftRight",description:"Cash instructions, payment records and evidence"},
   {href:"/employees",label:"Employees",labelBn:"কর্মচারী",icon:"Users",description:"Employee master records and payment statements"},
   {href:"/insights",label:"Operational Insights",labelBn:"পরিসংখ্যান",icon:"ChartLine",description:"Workforce, payment and vessel analytics"},
@@ -27,10 +28,11 @@ export const CONSOLIDATED_LINKS:Record<string,string>={
   "Report assistant":"/assistant",
 };
 
-import {LayoutDashboard,ArrowLeftRight,Users,ChartLine,Wallet,Archive,ClipboardCheck,Sparkles,type LucideIcon} from 'lucide-react';
+import {LayoutDashboard,Ship,ArrowLeftRight,Users,ChartLine,Wallet,Archive,ClipboardCheck,Sparkles,type LucideIcon} from 'lucide-react';
 
 export const NAV_ICONS:Record<string,LucideIcon>={
   LayoutDashboard,
+  Ship,
   ArrowLeftRight,
   Users,
   ChartLine,
