@@ -4,12 +4,14 @@ import Link from 'next/link';
 import {Button} from '@/components/ui/button';
 import {Tabs,TabsContent,TabsList,TabsTrigger} from '@/components/ui/tabs';
 import {Table,TableBody,TableCell,TableHead,TableHeader,TableRow} from '@/components/ui/table';
+import {Sheet,SheetContent,SheetDescription,SheetFooter,SheetHeader,SheetTitle} from '@/components/ui/sheet';
 import {Badge} from '@/components/ui/badge';
 import {Card,CardContent,CardHeader,CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {LoadingLines,PageNotice,Unavailable,KpiCard,KpiGrid,ActionButtonDisabled,StatusBadge} from '@/app/platform/ui';
 import {useApi} from '@/app/platform/ui';
 import {ESCORT_SUMMARY_URL} from '@/app/platform/ops-client';
+import {composeAdminDraft,draftGaps,draftProvenance,draftWarnings} from '@/lib/order-draft';
 
 export interface EscortSummaryResponse{
   scope:'current'|'archive';
@@ -31,15 +33,24 @@ export interface ImportAuditResponse{
 export interface EscortRow{
   id:number|string;
   clientName:string;
+  clientPhone?:string|null;
   motherVessel:string;
   lighterVessel:string;
+  cargo?:string|null;
+  capacity?:string|null;
+  importer?:string|null;
+  destination?:string|null;
+  bookingDate?:string|null;
   escortName:string;
   escortMobile:string;
   masterMobile:string;
   dutyDate:string;
+  shift?:string|null;
   sourceTime:string;
   status:string;
   reasons:string|string[];
+  sourceMessageId?:string|number|null;
+  releasePoint?:string|null;
 }
 
 const reasonList=(r:EscortRow)=>Array.isArray(r.reasons)?r.reasons:String(r.reasons??'').split(',').filter(Boolean);
@@ -49,8 +60,15 @@ export default function SourcesReviewView(){
   const [escortUrl,setEscortUrl] = useState('/api/escort-register');
   const escortRows=useApi<{rows:EscortRow[]}>(escortUrl);  const reviews=useApi<{rows:{id:string;date:string;time:string;body:string;sender:string;reason:string;status?:string}[];total:number;canWrite:boolean}>('/api/operations?view=reviews&scope=archive');
   const [q,setQ]=useState('');
+  const [draftRow,setDraftRow]=useState<EscortRow|null>(null);
+  const [copied,setCopied]=useState(false);
+  const copyDraft=async(row:EscortRow)=>{
+    try{await navigator.clipboard.writeText(composeAdminDraft(row));setCopied(true);setTimeout(()=>setCopied(false),2000);}
+    catch{setCopied(false);}
+  };
 
   const reviewRows=(escortRows.data?.rows??[]).filter(r=>r.status==='REVIEW');
+  const draftRows=(escortRows.data?.rows??[]).filter(r=>r.status==='DRAFT');
   const filtered=useMemo(()=>reviewRows.filter(r=>!q||[r.clientName,r.motherVessel,r.lighterVessel,r.escortName,r.id].join(' ').toLowerCase().includes(q.toLowerCase())),[reviewRows,q]);
 
   return <div className="flex flex-col gap-4">
@@ -68,6 +86,7 @@ export default function SourcesReviewView(){
     <Tabs defaultValue="vessel">
       <TabsList>
         <TabsTrigger value="vessel">Vessel review ({reviewRows.length})</TabsTrigger>
+        <TabsTrigger value="drafts">Admin drafts ({draftRows.length})</TabsTrigger>
         <TabsTrigger value="identity">Identity review</TabsTrigger>
         <TabsTrigger value="import">Import review (archive)</TabsTrigger>
         <TabsTrigger value="employee">Employee requests</TabsTrigger>
@@ -107,6 +126,32 @@ export default function SourcesReviewView(){
           </Table>
         </div>}
         <p className="text-[11px] text-muted-foreground">Message bodies and source text are not rendered here; verification happens in the preserved register screens which retain full provenance.</p>
+      </TabsContent>
+
+      <TabsContent value="drafts" className="mt-2 flex flex-col gap-2">
+        <PageNotice sourceLabel="Admin draft preparation" notice="Drafts are composed locally from the verified client order. Nothing is sent: the Admin copies the draft, completes the assignment fields and sends the single confirmation reply from the authorized WhatsApp account."/>
+        {escortRows.loading&&<LoadingLines/>}
+        {escortRows.error&&<Unavailable title="Drafts unavailable" reason={escortRows.error}/>}
+        {escortRows.data&&<div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader><TableRow><TableHead>Source time</TableHead><TableHead>Client</TableHead><TableHead>Vessels (M / L)</TableHead><TableHead>Master</TableHead><TableHead>Source ref.</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {draftRows.slice(0,100).map(r=><TableRow key={r.id}>
+                <TableCell className="whitespace-nowrap text-xs">{(r.sourceTime||'').slice(0,16).replace('T',' ')}</TableCell>
+                <TableCell>{r.clientName}</TableCell>
+                <TableCell className="whitespace-nowrap">{r.motherVessel} / {r.lighterVessel}</TableCell>
+                <TableCell className="whitespace-nowrap tabular-nums">{r.masterMobile||'—'}</TableCell>
+                <TableCell className="max-w-44 truncate text-xs">{String(r.sourceMessageId??'—')}</TableCell>
+                <TableCell><span className="flex gap-1">
+                  <Button size="sm" variant="ghost" onClick={()=>{setCopied(false);setDraftRow(r);}}>Review draft</Button>
+                  <Button size="sm" variant="outline" onClick={()=>void copyDraft(r)}>Copy</Button>
+                </span></TableCell>
+              </TableRow>)}
+              {!draftRows.length&&<TableRow><TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">{escortRows.loading?'':'No DRAFT orders in the selected scope.'}</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+          <p className="p-2 text-[11px] text-muted-foreground">First {Math.min(100,draftRows.length)} drafts · sending requires separate Owner authorization; WA-01 tools are unchanged.</p>
+        </div>}
       </TabsContent>
 
       <TabsContent value="identity" className="mt-2">
@@ -149,5 +194,40 @@ export default function SourcesReviewView(){
         </Card>
       </TabsContent>
     </Tabs>
+
+    <Sheet open={!!draftRow} onOpenChange={(open)=>{if(!open){setDraftRow(null);setCopied(false);}}}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>Admin draft — {draftRow?.clientName}</SheetTitle>
+          <SheetDescription>
+            Composed from the verified client order. Fill the assignment fields in your own reply; this draft is not a confirmation.
+          </SheetDescription>
+        </SheetHeader>
+        {draftRow&&<div className="grid gap-3 px-4 pb-4">
+          <Unavailable compact reason={draftProvenance(draftRow)}/>
+          <div className="grid gap-1">
+            <span className="text-xs font-medium text-muted-foreground">Draft text (read-only)</span>
+            <pre className="max-h-72 overflow-auto rounded-md border bg-muted/40 p-3 text-xs whitespace-pre-wrap">{composeAdminDraft(draftRow)}</pre>
+          </div>
+          {draftGaps(draftRow).length>0&&<div>
+            <p className="mb-1 text-xs font-medium">Fields to complete / verify</p>
+            <ul className="list-disc pl-5 text-xs text-muted-foreground">
+              {draftGaps(draftRow).map(gap=><li key={gap.field}>{gap.label}{gap.required?' — required in the original order':''}</li>)}
+            </ul>
+          </div>}
+          {draftWarnings(draftRow, reasonList(draftRow)).length>0&&<div>
+            <p className="mb-1 text-xs font-medium">Review notes</p>
+            <ul className="list-disc pl-5 text-xs text-muted-foreground">
+              {draftWarnings(draftRow, reasonList(draftRow)).map((warning,index)=><li key={index}>{warning}</li>)}
+            </ul>
+          </div>}
+          <SheetFooter className="flex-row justify-end gap-2">
+            <Button variant="outline" onClick={()=>{setDraftRow(null);setCopied(false);}}>Close</Button>
+            <Button onClick={()=>void copyDraft(draftRow)}>{copied?'Copied':'Copy draft'}</Button>
+            <ActionButtonDisabled label="Send via WhatsApp" reason="Outbound messaging requires separate Owner authorization and a verified destination design."/>
+          </SheetFooter>
+        </div>}
+      </SheetContent>
+    </Sheet>
   </div>;
 }
