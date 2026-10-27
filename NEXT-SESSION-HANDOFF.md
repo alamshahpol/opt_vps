@@ -1,0 +1,1191 @@
+# Next-Session Handoff — Updated After Session 3
+
+## Session 3 Summary (2026-10-21)
+
+### Completed
+1. Bridge Dockerfile — wget added for health checks
+2. Bridge images rebuilt (tag cap4-20261011)
+3. Bridges recreated (wa-01 and wa-02)
+4. Socket access verified: App UID 10001 to both bridge sockets
+5. P1 systemd-tmpfiles installed at /etc/tmpfiles.d/vps-whatsapp-control.conf
+
+### Remaining for Next Session
+- STEP 3: MCP container inventory and ownership audit (7 MCP containers running)
+- STEP 5: Final documentation polish
+- Git repo: Initialize /opt/vps as git repo
+- Bridge health endpoint: Test wget health check from inside bridge containers
+- Permission persistence P2 (backup): If P1 fails after reboot, apply P2
+
+### Correct Compose Commands
+
+    Bridge ps:
+    docker compose -p vps-whatsapp-cap4-wa01 -f /opt/vps/services/whatsapp/compose.yaml --profile wa-02 ps
+
+    Bridge recreate (requires Owner confirmation each time):
+    docker compose -p vps-whatsapp-cap4-wa01 -f /opt/vps/services/whatsapp/compose.yaml --profile wa-02 up -d --no-deps --force-recreate whatsapp-wa-01 whatsapp-wa-02
+
+    After recreate, fix permissions:
+    sudo systemd-tmpfiles --create /etc/tmpfiles.d/vps-whatsapp-control.conf
+
+### Permission Model
+- wa-01/control: 0710, owner 10002:10002
+- wa-02/control: 0710, owner 10003:10003
+- mcp.sock: 0660, bridge UID:GID
+- App UID 10001, groups 10002 and 10003
+
+### P2 Backup Plan (if P1 fails after reboot)
+If control dirs revert to 0700, add this line to
+/opt/vps/services/whatsapp/source/service-entrypoint.sh before supervisor exec:
+    chmod 0710 /runtime/control 2>/dev/null || true
+Then rebuild bridge image and recreate containers.
+
+## Goal-driven continuation — 2026-10-22, 14:49 CEST
+
+### Current
+
+- The Vessel URL-state change remains in the worktree and is not deployed.
+  The Cash-page link is still `/vessel`; that route exists. API requests
+  continue to include their prior `source`, `page`, `sort`, and filter
+  defaults. Browser URLs omit untouched defaults, retain explicitly supplied
+  base state and non-empty filters, and use `replaceState` only when the URL
+  changes.
+- A React lint issue in the URL-state ref initialization was corrected in
+  `apps/al-rifai/app/vessel-dashboard.tsx`; no Cash behavior was changed.
+- Authenticated browser rendering and the deployed browser URL remain
+  unverified; this continuation did not deploy the worktree change.
+- Cash's displayed date is derived from `cash_instructions.source_time` and
+  rendered in `Asia/Dhaka`. The existing scope is `wa-01` / `Cash Payment`;
+  its latest-row ordering is `source_time DESC, id DESC`. The table schema
+  includes `created_at`. The exact production timestamp for the reported
+  2026-10-18 row remains unavailable: the prior bounded query was denied on
+  `cash_instructions` for role `alrifai_app`. No permission bypass, broader
+  grant, or authenticated endpoint probe was attempted.
+- Read-only runtime observation: `/api/health` returned `{"status":"ok"}`;
+  the app and PostgreSQL were healthy, and both WhatsApp bridges were running.
+  No deployment, restart, migration, financial write, or bridge operation was
+  performed.
+- The initial worktree was already dirty in `/opt/vps`, `apps/al-rifai`, and
+  `services/whatsapp/source`, including unrelated and Cash-protected changes.
+  Those changes were preserved; nothing was staged, reset, or cleaned. This
+  continuation changed only the Vessel ref initialization and this handoff
+  plus the corrected delivery plan.
+
+### Validation
+
+All Node checks ran in disposable Node 22.23.3 containers with networking
+disabled, the app source mounted read-only, and only temporary writable space.
+The build used a temporary copy and no production mounts or credentials.
+
+| Check | Result | Notes |
+|---|---|---|
+| Vessel URL, Cash safety, health-isolation, WA-02/archive tests | **PASS** — 19 tests | Includes the URL default/shareability cases and WA-02 archive-only/idempotency assertions. |
+| Package-defined escort/archive tests | **PASS** — 23 tests | Re-run after the ref correction. |
+| Workflow tests | **PASS** | Completed in the isolated container. |
+| Phase-1 unit checks | **PASS** | Completed in the isolated container. |
+| Typecheck | **PASS** | `tsc --noEmit`; compiler state redirected to temporary storage. |
+| Targeted ESLint | **PASS** | `app/vessel-dashboard.tsx`, `lib/vessel-url-state.ts`, and `tests/vessel-url-state.mjs`. |
+| Full ESLint | **FAIL** | The repository lint wrapper hit `ENOBUFS`; direct full-tree lint reported 8,291 errors and 92,728 warnings, including archived qualification fixture copies. No unrelated lint fixes were made. |
+| Production build | **PASS, qualified** | Built successfully in isolation, including `/vessel`; installed Next.js was 16.3.4 while the manifest/lockfile specify 16.3.8, so a build against the exact locked dependency tree remains unverified. |
+| Authenticated browser rendering | **NOT RUN** | No authenticated production or test-account session was used. |
+| `tests/source-register.mjs` | **BLOCKED** | Requires `/var/lib/vps/al-rifai/evidence/chat-archive.json`, which was deliberately not mounted into the isolated environment. |
+| `git diff --check` | **PASS** | Root, app, and WhatsApp-source worktrees. |
+| Migration-chain / production integration | **NOT RUN** | No database or production data path was mounted or accessed. |
+
+### Isolation evidence and next action
+
+- WA-02 archive-only assertions passed: archive markers remain available while
+  WA-02 creates no pending Cash/Vessel markers; the tests also confirm
+  WA-01 remains eligible. Cash and Vessel processors select pending work only
+  from `wa-01`. This is source/test evidence, not a live processing test.
+- Cash freeze remains active. No Cash source, test, migration, dependency,
+  runtime setting, release file, or production behavior was changed by this
+  continuation.
+- Next action: have the Owner or an already-authorized read-only database
+  operator return only the latest in-scope row's `source_time` and `created_at`
+  converted to `Asia/Dhaka`, using the existing `wa-01` / `Cash Payment`
+  scope and `source_time DESC, id DESC` tie-break. Do not widen database
+  grants or return IDs, amounts, identities, or message content.
+- Before any release is considered, repeat build/lint/test checks with the
+  exact lockfile dependency versions in an authorized isolated environment.
+  No production deployment or restart is authorized by this handoff.
+
+### Correct Compose Commands
+
+    Bridge ps:
+    docker compose -p vps-whatsapp-cap4-wa01 -f /opt/vps/services/whatsapp/compose.yaml --profile wa-02 ps
+
+    Bridge recreate (needs Owner confirmation):
+    docker compose -p vps-whatsapp-cap4-wa01 -f /opt/vps/services/whatsapp/compose.yaml --profile wa-02 up -d --no-deps --force-recreate whatsapp-wa-01 whatsapp-wa-02
+
+    After recreate, fix permissions:
+    sudo systemd-tmpfiles --create /etc/tmpfiles.d/vps-whatsapp-control.conf
+
+### Permission Model
+- wa-01/control: 0710, owner 10002:10002
+- wa-02/control: 0710, owner 10003:10003
+- mcp.sock: 0660, bridge UID:GID
+- App UID 10001, groups 10002 and 10003
+
+### P2 Backup Plan
+If control dirs revert to 0700 after reboot, add to
+/opt/vps/services/whatsapp/source/service-entrypoint.sh:
+    chmod 0710 /runtime/control 2>/dev/null || true
+Then rebuild bridge image and recreate containers.
+
+## Goal-driven continuation — 2026-10-22, 15:48 CEST
+
+### Current
+
+- The requested latest `source_time` and `created_at` values remain
+  **BLOCKED**. The prior timestamp-only query was denied for
+  `alrifai_app`; no query was retried and no alternate access was attempted.
+- `package.json` and `pnpm-lock.yaml` specify Next.js `16.3.8`; the package
+  manager is pinned to `pnpm@11.25.0`.
+- Root is on `master`; the app and WhatsApp-source repositories are on
+  `main`. Their pre-existing dirty changes remain untouched. The app
+  worktree includes Cash-protected paths, including Cash UI/API, Cash
+  libraries, migrations, tests, package/configuration, and release paths.
+  This inspection did not establish an exact-path Owner exception or the
+  provenance of those changes.
+- Production health/status was not rechecked in this continuation. The
+  previously recorded live observation is not a current observation.
+
+### Validation
+
+| Check | Result | Notes |
+|---|---|---|
+| Locked-version build | **NOT RUN** | No verified isolated dependency tree for the pinned lockfile was established; no package download or install was attempted. The prior build used Next.js 16.3.4 and does not satisfy this check. |
+| `tests/source-register.mjs` | **BLOCKED / NOT RUN** | It reads `chat-archive.json`, which was not provided as a safe fixture. No production evidence or personal data was copied or mounted. |
+| Timestamp-only production read | **BLOCKED** | Prior read-only query returned permission denied on `cash_instructions`; no permission change or bypass was attempted. |
+| `git diff --check` | **PASS** | Root, app, and WhatsApp-source tracked diffs; untracked files are not covered by this check. |
+
+Previously recorded test/build results in the preceding continuation are
+historical and were not rerun in this continuation.
+
+### Isolation, safety, and readiness
+
+- Cash Freeze remains in force. No Cash/Vessel behavior, production data,
+  configuration, database, container, or bridge was changed by this
+  continuation. No messages were sent.
+- The existing dirty app changes overlap Cash-protected scope. They were not
+  edited, staged, reset, or cleaned; their authorization and isolation status
+  remain **UNVERIFIED**.
+- **Deployment readiness: BLOCKED.** The timestamp evidence, exact
+  lockfile-version build, `source-register` test, and authorization status of
+  the protected worktree changes remain unresolved.
+- Next action: ask the Owner or an already-authorized read-only database
+  operator to provide only the latest in-scope `source_time` and `created_at`
+  in `Asia/Dhaka`, without widening database grants or returning other
+  fields. Separately, keep the protected dirty changes untouched pending
+  exact-path Owner review.
+- No production deployment, restart, migration, or write was performed.
+
+## Read-only Cash/Bridge audit — 2026-10-22, 16:41 CEST
+
+### 1. Bridge/source timestamp evidence
+
+- The Bridge1 message-store schema in source defines messages by `(id,
+  chat_jid)` and stores `sender`, `timestamp`, and direction. The WA-01
+  containers were running, but the approved health probes returned no payload
+  (exit code 6); no alternate API, socket, credential, or store access was
+  attempted.
+- The existing bounded MCP history-list tools return message body text as
+  well as metadata. The proof tool needs known message IDs and returns state
+  and a hash, not timestamp/sender. No metadata-only native read was available
+  in this session, so the actual Bridge1 SQLite rows remain **UNVERIFIED**.
+- A read-only aggregate against the existing AL-RIFA'I projection, restricted
+  to WA-01 Cash payment candidates, found 1,707 processed candidate rows;
+  every row had a message ID, source timestamp, sender reference, and chat
+  reference. No message IDs, contact values, body, amount, or employee data
+  were returned. This proves fields exist in that projection, not that every
+  Bridge1 message was copied or that Cash rows map correctly.
+- The live app database schema exposes `whatsapp_messages_original` fields
+  for message ID, chat, sender, timestamp, direction, and ingestion time.
+  This does not establish a lossless or complete copy from the Bridge1 store.
+
+### 2. Cash-record mapping
+
+- **BLOCKED:** the current `alrifai_app` role has no SELECT privilege on
+  `cash_instructions` or `source_refs`. No Cash row, mapping, or exact
+  `source_time`/`created_at` value was read. No alternate role or grant was
+  used.
+- `source_time` represents the source event time; `created_at` represents
+  creation of the Cash instruction in the application database. They are
+  distinct. The requested latest pair remains unverified.
+
+### 3. Duplicate protection
+
+- Live PostgreSQL index metadata confirms unique native-message identity
+  `(wa_account, chat_jid, message_id)` and unique processing identity
+  `(original_id, domain)`.
+- Cash postings have a unique `(scope_account, operation_id)` constraint.
+  Cash instructions have primary-key uniqueness, but their operation index
+  is non-unique. Source references have a unique key including
+  `(scope_account, channel, external_ref, block_key, payload_hash)`; that
+  constraint alone does not enforce uniqueness of a source message/block
+  independent of payload hash.
+- The dirty source snapshot derives stable IDs from account/chat/message/block
+  and takes an operation advisory lock. This is static source evidence only;
+  it is not proof that the current production worker uses it. Timestamp alone
+  is not a safe duplicate key: independent messages can share timestamp
+  resolution, and a single message may contain multiple payment blocks.
+
+### 4. Employee identity and ledger
+
+- Live aggregate metadata shows 173 WA-01 `employee_master` rows; all are
+  `REVIEW` and all have aliases. No mobile, name, alias, or transaction row
+  was returned. The table key is `(scope_account, employee_mobile)`, but the
+  correctness of any Cash-record-to-employee mapping is **UNVERIFIED**.
+
+### 5. Cash access control
+
+- Static review of the dirty, uncommitted app worktree shows Cash portal roles
+  `ADMIN` and `USER`, not a distinct `SUPER_ADMIN` role. The `summary` and
+  `messages` GET handlers authenticate a session but do not call
+  `requireAdmin`; user-management handlers do. The messages handler selects
+  message text and sender metadata. If this worktree API is deployed, a
+  regular authenticated `USER` appears able to read sensitive Cash data,
+  contrary to the stated Super Admin-only rule.
+- Live authorization was not tested. The GET authentication helper updates
+  session and user `last_seen_at`, so calling these endpoints would not be a
+  strictly read-only database check. No credentials or accounts were used.
+  Deployment of this dirty worktree is also unverified.
+
+### Safety and next action
+
+- Only schema/index metadata, scoped aggregate counts, and container health
+  were inspected. No message body, Cash row, phone number, employee identity,
+  amount, secret, or credential was read or returned. No data or behavior was
+  changed; no message was sent.
+- The health probes did not return a response; app was reported healthy and
+  database healthy by `docker ps`. These observations do not prove the native
+  reader or bridge API is available.
+- **Readiness remains BLOCKED.** Next action: have the Owner or an already
+  authorized read-only operator provide a metadata-only, exact-scope Bridge1
+  to Cash mapping result with only source time and Cash creation time; do not
+  widen grants, expose bodies/identities/amounts, or change Cash code.
+
+## Ready-made tool discovery & capability closure — 2026-10-22, 20:50 CEST
+
+### Work completed
+
+- Reused the prior audit results in
+  [CASH-VESSEL-DOMAIN-DELIVERY-PLAN-CORRECTED.md](CASH-VESSEL-DOMAIN-DELIVERY-PLAN-CORRECTED.md);
+  did not rerun production queries, health probes, or tests.
+- Reviewed the root/app/WhatsApp instructions, handoff, VPS map, native
+  message inventory, app package/Compose, bridge Compose, current dirty source
+  adapters and ingestion migrations. Root, app, and WhatsApp-source trees
+  were already dirty; no existing change was staged, overwritten or removed.
+- Evaluated official repositories/docs for CrystalDBA Postgres MCP, the
+  existing WhatsApp MCP, Gatus, Uptime Kuma, Testcontainers Node, pgTAP,
+  dbt and Auth.js. Selection/rejections, license/activity evidence,
+  limitations and exact POC controls are in the delivery plan.
+- Updated only this handoff and the delivery plan. No code, SQL, tests,
+  package/configuration, production data, container, bridge, credential or
+  permission was changed. Cash Freeze remains in force.
+
+### Consolidated evidence and status
+
+- **Source → ingestion → processing → Cash counts: BLOCKED.** The historical
+  WA-01 all-message store count (14,541, observed 2026-10-12) and the scoped
+  AL-RIFA’I Cash-candidate projection count (1,707, observed 2026-10-22) do
+  not share scope or observation time and are not a loss/reconciliation
+  denominator. The projection rows had message ID, timestamp, sender and chat
+  references. No direct current Bridge1 rows, comparable stage counts,
+  failure/rejection/unmatched totals or Cash-record linkage were obtained.
+- **Cash record timestamp/mapping: BLOCKED.** Prior bounded read was denied
+  for `cash_instructions` / `source_refs` under `alrifai_app`; no grant,
+  alternate role or retry was attempted. Exact source/Cash creation timestamps
+  and per-record mappings remain unavailable.
+- **Employee mapping: UNVERIFIED.** Prior aggregate found 173
+  `employee_master` entries, all `REVIEW`; no individual identity/mobile or
+  ledger mapping was observed.
+- **Idempotency: PARTIAL evidence only.** Prior live index inspection found
+  source message and processing uniqueness and `cash_postings` uniqueness on
+  `(scope_account, operation_id)`. It did not prove end-to-end concurrent
+  replay behavior. Dirty, undeployed code uses source account/chat/message/
+  block identity; it is not live proof.
+- **Authorization: BLOCKED / potential static gap.** Dirty app candidate has
+  `ADMIN`/`USER` roles; the Cash read handlers appear not to enforce the
+  required distinct Super Admin policy. Live authorization and deployment of
+  that worktree were not checked. Treat as a security issue requiring exact
+  protected-path Owner exception, not as a live finding.
+- **Bridge metadata capability: BLOCKED.** Existing archive tools require
+  content access and return body text. Candidate `list_native_events` can
+  represent held/no-body metadata, but its `native.events.read` capability is
+  not registered in the source capability map. Source tree changes are
+  uncommitted; production availability is unverified.
+- **Cash/Vessel isolation: UNVERIFIED for live operation.** Prior offline
+  tests and source-scope assertions are historical only; no tests were run in
+  this continuation and no production processing was exercised.
+- **Monitoring: PARTIAL.** Existing app/Docker healthchecks are reused; no
+  current independent alert service/destination is evidenced. Optional
+  Gatus was recommended over adding Uptime Kuma, subject to explicit
+  service/network/alert approval.
+
+### Candidate decisions
+
+- **Recommended existing components:** current account-scoped WhatsApp MCP
+  and the existing PostgreSQL/Node test architecture; no second pipeline,
+  database, auth service, or orchestrator.
+- **Optional, not installed:** Gatus for independently monitored internal
+  health endpoints; Testcontainers Node only if the present disposable
+  qualification harness proves insufficient.
+- **Not selected:** production Postgres MCP due to direct DB credential/data
+  exposure, Python/container addition and unknown advisory status; Uptime
+  Kuma due to greater persisted/admin operational surface; dbt due to
+  unnecessary transformation pipeline; pgTAP due to server extension change;
+  Auth.js due to broad auth/session migration without solving business
+  authority mapping; Airflow/Prefect due to no architectural need.
+- GitHub advisory pages for Postgres MCP, Gatus and Uptime Kuma could not be
+  retrieved, so advisory status is **UNVERIFIED**, not “no advisories.”
+
+### Tests / work not run
+
+| Check | Status | Reason |
+|---|---|---|
+| Production Bridge1 metadata read / matched source-to-Cash reconciliation | **BLOCKED** | No metadata-only production reader or authorized Cash projection read established. |
+| Exact-scope failure, duplicate and unmatched counts | **BLOCKED** | Comparable, same-window source/DB metadata unavailable. |
+| Cash replay/concurrency, employee mapping, Posted immutability and Super Admin tests | **NOT RUN** | Cash behavior/test paths are protected; no exact-path exception or safe isolated Node+PostgreSQL environment established. |
+| Vessel/Cash cross-domain integration tests | **NOT RUN** | Prior offline results are historical; current dirty code was not executed. |
+| Locked-version typecheck/lint/build/full tests | **NOT RUN** | Exact lockfile dependency tree was not installed; production runtime is not a build/test environment. |
+| Third-party software install or isolated POC | **NOT RUN** | No need to install software to make the selection; new dependencies/services require isolation and, where protected, Owner approval. |
+| Documentation whitespace check | **FAIL, pre-existing issue isolated** | `git diff --check` on this tracked handoff was clean. `git diff --no-index --check /dev/null CASH-VESSEL-DOMAIN-DELIVERY-PLAN-CORRECTED.md` reports only trailing spaces on pre-existing lines 3–4 of the untracked plan; the appended section has none. Those unrelated lines were preserved. |
+
+### Readiness / next authorized step
+
+**Production readiness: BLOCKED.** The delivery plan now contains a complete
+least-privilege permission/tool package, required isolated test cases,
+deployment order, rollback/recovery boundaries and one consolidated exact-
+path exception request. No production deployment/restart, database change,
+financial write, message send or new credential is authorized by this update.
+
+If the Owner authorizes the protected work, authorize the exact paths listed
+in the delivery plan together with: intended metadata-only/read-guard behavior;
+an isolated synthetic fixture validation plan; explicit statement that there
+will be no financial business writes or WhatsApp sends; and a separate
+deployment/restart decision. Also identify the approved Super Admin
+principal(s) and (only if choosing Gatus) the alert destination. Until then,
+keep all existing dirty protected paths unchanged.
+
+## Bounded offline Cash/Vessel delivery work — 2026-10-22
+
+The Owner approved offline implementation/tests only on the exact candidate
+bridge metadata and Cash read-authorization paths in the delivery plan. This
+does not authorize runtime configuration, database grants/migrations,
+production data access, service restart/deployment, financial writes, posting
+or approval changes, or WhatsApp sends.
+
+### Changes made
+
+- In `services/whatsapp/source/whatsapp-mcp-server/capabilities.py`,
+  `list_native_events` is now gated by `native.events.read`.
+- In `services/whatsapp/source/whatsapp-mcp-server/native_reader.py`, the
+  metadata tool forces body-free serialization regardless of whether the
+  principal separately has content capability; it also omits paired
+  JID/LID values from the metadata response. The existing account/chat scope
+  and privacy-barrier checks remain.
+- In
+  `services/whatsapp/source/whatsapp-mcp-server/tests/test_capabilities.py`,
+  added a synthetic disposable-SQLite test for capability isolation,
+  metadata-only output, no paired identities, and out-of-scope chat denial.
+- In `apps/al-rifai/lib/cash-portal.ts` and
+  `apps/al-rifai/app/api/cash/[...path]/route.ts`, Cash `summary` and
+  `messages` reads now require an `ADMIN` identity explicitly listed in
+  `ALRIFAI_CASH_SUPER_ADMIN_IDS`. Unset/empty configuration denies by
+  default. No account was selected or promoted.
+- Added `apps/al-rifai/tests/cash-super-admin-auth.mjs` for default denial,
+  explicit allowlisting, role/ID validation, and guard placement.
+- No posting, parsing, ingestion, source scope, employee mapping, migration,
+  database, bridge runtime or vessel-processing code was changed.
+
+### Validation status
+
+| Check | Status | Result |
+|---|---|---|
+| Focused Node Cash authorization test | **NOT RUN** | Test runner has no registered VS Code test controller; host Node/pnpm are unavailable and no isolated Node runner was available. |
+| Focused Python bridge capability test | **NOT RUN** | Test runner has no registered controller; Python environment configuration and container-tool helpers were unavailable. |
+| Typecheck/lint/full tests/build | **NOT RUN** | No authorized isolated Node 22 environment was available. |
+| Source-to-Cash reconciliation and failure/unmatched counts | **BLOCKED** | No authorized same-scope current metadata mapping. |
+| Live Cash Super Admin authorization | **UNVERIFIED** | No Owner-designated identity or production allowlist configuration. |
+| Live Cash/Vessel isolation and deployed bridge capability | **UNVERIFIED** | No tests against a live service and no deployment occurred. |
+
+**Production status: DEPLOYMENT BLOCKED.** The code is fail-closed but not
+release-validated. Required next steps are to obtain the Owner-designated
+existing `ADMIN` ID(s), approve/document the runtime allowlist configuration
+and deployment window, then run isolated focused tests plus exact-lockfile
+typecheck/lint/full tests/build. Production read grants, migrations, writes,
+deployment/restart, and WhatsApp sends remain outside this approval. All
+pre-existing dirty work was preserved; no broad staging or cleanup occurred.
+
+## Batch 0.2 — Vessel duplicate qualification continuation
+
+### Scope and changes
+
+- Continued the already-authorized offline Vessel-only work. The only files
+  changed in this continuation are
+  [apps/al-rifai/lib/escort-register.mjs](apps/al-rifai/lib/escort-register.mjs)
+  and
+  [apps/al-rifai/tests/escort-register.mjs](apps/al-rifai/tests/escort-register.mjs).
+- For an exact normalized Mother/Lighter vessel pair with duty dates no more
+  than one day apart, one existing canonical candidate is linked as a
+  **potential duplicate in REVIEW**. Its original register row is not updated
+  or confirmed; each source keeps its own source link/event/provenance.
+- Multiple canonical matches remain a separate ambiguous REVIEW item with no
+  business key. More than one day apart or a different vessel pair remains a
+  distinct order. Invalid `Date` values cannot throw during candidate checks.
+- Existing WA-01-only scope, group authorization, login/roles/permissions,
+  Cash logic, ingestion, bridge identity/session, and database code were not
+  changed. No production data, container, service, or WhatsApp bridge was
+  accessed or changed.
+
+### Validation
+
+| Check | Result | Evidence / limitation |
+|---|---|---|
+| Vessel + WhatsApp archive + health isolation + URL-state synthetic tests | **PASS** | 29/29 in disposable Node 22.23.3 container with networking disabled and source mounted read-only. Includes ±1 day, two-day separation, different lighter, ambiguity, canonical preservation, provenance and replay. |
+| Targeted ESLint | **PASS** | Both changed files; cached isolated `al-rifai-toolchain:phase1` image. |
+| TypeScript check | **PASS** | `tsc --noEmit`; compiler state redirected to `/tmp` in the isolated toolchain container. |
+| `git diff --check` | **PASS** | No whitespace errors in the app worktree. |
+| Exact frozen-lockfile install/build and full test/lint suite | **NOT RUN** | `pnpm exec` attempted an install into the read-only source mount and failed with `EROFS`; no install or source change was made. No exact-lockfile build is claimed. |
+| Migration chain / disposable DB | **NOT RUN** | Cached PostgreSQL 16 image exists, but no migration was applied during this continuation. No production database was accessed. |
+| Authenticated UI/browser acceptance | **NOT RUN** | No auth/session/account was used. |
+
+### Migration and release boundary
+
+- Candidate migration dependencies remain 0018 and 0020–0023. They are not
+  cleared for production: 0018 seeds/upserts Vessel contacts and changes
+  grants; 0021/0022 add ingestion schema/triggers and grants; 0023 adds
+  Vessel identity/group-authorization schema, changes an event constraint,
+  and grants access. 0020 is additive archive schema. No migration was
+  changed or applied here.
+- The candidate files are worktree changes, not proof of deployed behavior.
+  The previously recorded live app image digest is
+  `sha256:16c1289086e69da16d5270bc39bcaae85718388eba6a46747c92711a2e395d2d`;
+  no deployment or restart occurred.
+- **Next-stage decision: NO-GO for release or deployment.** The focused
+  candidate logic is synthetically validated, but exact-lockfile build/full
+  suite, disposable migration verification, authenticated UI acceptance,
+  migration permission review, and release-path isolation remain outstanding.
+  Continue excluding all Cash-protected and identity/auth/role/permission
+  paths. Do not begin Batch 1 or deployment without the Owner's separate
+  approval.
+
+  ## Current Production Position — 2026-10-24
+
+  ### Scope and evidence provenance
+
+  This is a dated, read-only production snapshot and Batch 1.4F Step 1 evidence
+  handoff. It does not authorize implementation, migration, replay, cleanup,
+  deployment, restart, business-data access, or Cash Payment changes. Previous
+  Agent reports are identified as reports; they are not treated as raw test
+  evidence. The Batch 1.4F session evidence is in
+  `/root/.copilot/session-state/474ac02f-17e0-49af-b9e9-24b31a838865/events.jsonl`;
+  the 1.4E readiness and 1.4F Step 1 checkpoints are in the current session's
+  `checkpoints/` directory. The 1.4D candidate source files were not recovered
+  as persistent source artifacts.
+
+  ### Canonical system and observed production baseline
+
+  - Existing application/repository: `/opt/vps/apps/al-rifai`; VPS
+    orchestration: `/opt/vps`; application configuration:
+    `/etc/vps/apps/al-rifai/app.env`.
+  - Canonical PostgreSQL service: container `vps-infra-postgres-1`, database
+    `alrifai`; deployed application: container `al-rifai-app-1`. Do not create
+    another app or database.
+  - At 2026-10-24 13:46 CEST, read-only checks observed app image
+    `sha256:16c1289086e69da16d5270bc39bcaae85718388eba6a46747c92711a2e395d2d`,
+    app container `running (healthy)`, `/api/health` returning
+    `{"status":"ok"}`, PostgreSQL `16.15` and `healthy`.
+  - The same snapshot found 23 rows in `public.alrifai_schema_migrations`,
+    latest `0022_whatsapp_incremental_ingestion.sql`; 0023 and 0024 are absent.
+    The ledger's 0016 SHA-256 is
+    `8bf6171533186695f4024317b457559723677d3c42cb6e1c6da668f2afcb6b2`.
+  - `alrifai_migrator`, `alrifai_vessel_owner`, `alrifai_migration_owner`, and
+    `alrifai_wa_view_owner` were absent from the queried production role
+    snapshot. `alrifai_app` and `ir_review_runtime` were non-superusers;
+    `vps_pg_admin` was a superuser. Do not infer least-privilege readiness from
+    this role inventory.
+  - WA-01 and WA-02 containers were running the same image digest,
+    `sha256:d36ca8516dc615825c22300f030042941a408331296c47423d4234f5ecad093c`.
+    Their control directories were `0710`, owned by `10002:10002` and
+    `10003:10003`; sockets were `0660` with the corresponding bridge ownership.
+    The approved local `/api/health` probes returned no payload and exit code
+    6 for both bridges. Pairing/session status, message reception, and bridge
+    health are therefore **NOT VERIFIED**. No WA-02 message was inspected.
+  - Health checks prove service reachability only. They do not prove that an
+    incoming message was received, preserved, classified, processed, or shown
+    to the correct office user.
+
+  ### Batch 1.4F Step 1 — recovered evidence and limitations
+
+  **Migration 0016:** Exact SQL bytes were located in an existing local Docker
+  image layer and hashed to
+  `8bf6171533186695f4024317b457559723677d3c42cb6e1c6da668f2afcb6b2`,
+  matching the production ledger. The current workspace file hash is
+  `9880bc5da925552fd9cb7f089480c0dfea1524ff3ff90a8237e002b2fbb8114c`.
+  Signed image provenance/attestation was not established. The recovered bytes
+  were not copied into the canonical migration path. No production ledger or
+  Cash data change was authorized.
+
+  **Migration runner and proposed migrations:** The complete tested Batch
+  1.4D runner/helper and 0023/0024 candidates were not recovered as persistent
+  source artifacts. Archived commands, reported hashes, and selected raw
+  outputs exist in the session event log. Reported candidate SHA-256 values:
+
+  - runner `1da99a61a9519a8fbafcc633baa1db7540294b77248694efd5f82ad7c756a16e`
+  - helper `6b65fbbd1cf23224eb584e27dba0e013ca55c0dc59afe27b40de5da970817b09`
+  - candidate 0023 `21862bc3ea5550723cbfcd52f32760afc11d2c0b8e3b81775beddf46347028d`
+  - candidate 0024 `8088198e9898a26f8ab76189a33f0d739566b2fc30ce0af9d973cd3e0a5dad5d`
+
+  These are archived Agent-session values, not independently re-hashed
+  candidate files. The tested implementation is **NOT RECOVERED**. The design
+  and transaction/role/locking behavior require a reproducible implementation
+  and verification package in a separately authorized disposable environment.
+  The reported backend-disconnection `57P01` unhandled client error remains an
+  unresolved robustness issue.
+
+  **Failure-injection evidence:** A1–A4 have recorded injected-failure exit
+  codes, but only one aggregate schema/ledger check after all four; separate
+  post-failure rollback evidence for every case is incomplete. A5 has corrected
+  role-switching failure output. A6 has disposable checksum-mismatch
+  fail-closed output. A7's concurrent outcomes are consistent with
+  serialization, but direct lock-wait evidence is missing. A8 has disposable
+  idempotent-rerun output. The 1.4D archived raw summary says `44/44 matched`;
+  complete per-table fingerprint artifacts were not recovered. Do not report
+  these incomplete items as test-suite PASS.
+
+  **Roles and WA-01 view:** Selected disposable privilege denials are recorded.
+  The proposed role design allowed the migrator to assume the WA view owner;
+  therefore denial of direct base-table SELECT does not prove lack of effective
+  contact access. Production candidate roles are absent. WA-01 alias-view and
+  WA-02 exclusion behavior remain unverified in the deployed end-to-end path.
+
+  **Backup, fingerprints and cleanup:** The archived backup and manifest
+  hashes were verified in the earlier evidence recovery; a strict PostgreSQL
+  16 disposable restore was recorded with exit `0`. The aggregate 44/44
+  fingerprint result exists, but its individual fingerprint files are absent.
+  Three anonymous volumes with prefixes `2cea89ed`, `aca35d6b`, and `cf6d9897`
+  remain unattributed. Do not inspect their contents, reuse, mount, or delete
+  them without separate verification and authorization.
+
+  ### Issue register
+
+  `Production changed?` below refers to the documented audit/recovery work;
+  none of those activities changed production. It does not assert a historical
+  before/after comparison of every business row.
+
+  | Issue ID | Affected function / component | Current observed state | Evidence and source | Business impact | Required corrective action | Owner decision needed | Status | Production changed? |
+  |---|---|---|---|---|---|---|---|---|
+  | CP-01 | Cash Payment / all protected Cash paths | Freeze remains active; this audit made no Cash write or behavior change. | Root `AGENTS.md`; read-only audit scope. | Prevents unapproved financial behavior changes. | Keep frozen; request exact-path exception before any protected change. | YES, for any exception. | BLOCKED | No |
+  | MIG-01 | 0016 checksum / migration source | Ledger hash matches bytes found in an image layer; current workspace hash differs; image attestation is absent. | Production ledger query and earlier image-layer SHA-256 evidence. | Applying a modified historical migration could invalidate checksum/history. | Preserve evidence; establish trusted provenance and decide whether canonical source recovery is required. | YES before source/ledger action. | OPEN | No |
+  | MIG-02 | Atomic migration runner / 0023 / 0024 | Exact Batch 1.4D tested candidate files are not persistent/recovered. | 1.4D session log contains hashes/commands, not complete source artifacts. | No reproducible basis to certify atomic migration or least privilege. | Recover exact artifact or design and verify anew in an approved disposable environment. | YES before protected source or test work. | BLOCKED | No |
+  | MIG-03 | Atomicity / locking / connection failure | A1–A4 per-case rollback proof incomplete; A7 lock-wait proof missing; `57P01` client handling unresolved. | Selected 1.4D raw output and session report. | Partial migration, concurrency, or worker failure may be mishandled. | Build test-specific assertions and robust connection-loss handling; validate outside production. | YES before protected runner changes. | NOT VERIFIED | No |
+  | ROLE-01 | Migration roles / WA-01 alias view | Candidate roles absent in production; candidate migrator could assume view-owner role in disposable design. | 2026-10-24 role metadata; 1.4D selected privilege outputs/report. | Effective access may exceed the intended base-table denial. | Define and test complete direct/effective privilege matrix, including view ownership and role switching. | YES before grants, role, or migration changes. | BLOCKED | No |
+  | WA-01 | WhatsApp receive / bridge pairing | Container running and socket permission model intact; approved health probe returned no payload, exit 6. Pairing/session and receive status unknown. | 2026-10-24 `docker ps`, `stat`, approved health probe. | New messages may not arrive or recover; service status alone is insufficient. | Obtain an approved status-only bridge check and trace through the existing pipeline without message content. | YES if a credentialed or content-level check is needed. | NOT VERIFIED | No |
+  | WA-02 | Identity-only boundary | Container running; no WA-02 message access performed; health probe returned no payload, exit 6. | 2026-10-24 status/permission metadata. | Must not expand WA-02 message scope. | Keep identity-only boundary; verify only non-message identity metadata under authorized method. | YES for any scope expansion. | NOT VERIFIED | No |
+  | ING-01 | Native store → PostgreSQL mirror / worker | Live end-to-end source-to-archive correspondence, retries, duplicate behavior, and cursor health not demonstrated. | Health checks and static source/report evidence are insufficient. | Loss, delay, duplicate, or silent omission of incoming work is possible but not established. | Use bounded metadata-only source-to-archive tracing; do not read message bodies or replay. | YES for any content access or write/replay. | NOT VERIFIED | No |
+  | ESC-01 | Escort Order / parser and register | Owner rules and candidate parser exist in source/report history; current deployed message-to-review/register result is not verified. | Candidate files and archived test reports; no live trace. | Escort assignment may be missed, misparsed, duplicated, or incorrectly confirmed. | Verify identity, fields, provenance, duplicate rule, and ambiguity-to-Review behavior in a controlled approved test. | YES for live injection or protected changes. | NOT VERIFIED | No |
+  | ACC-01 | Accounts instruction / Cash review pipeline | Cash flow remains frozen; no live instruction was read or posted; current authenticated review visibility not tested. | Cash Freeze; no Cash-row access in this audit. | Incorrect identity/direction mapping could create unsafe or missing work. | No posting/approval; obtain explicit Cash Owner authorization before content-level or protected-path validation. | YES. | BLOCKED | No |
+  | UI-01 | Review queue / authenticated register and Accounts UI | App and DB health passed; authenticated item visibility and error presentation are not proven by health. | Current `/api/health`; no authenticated browser/API session. | Office users may not see, distinguish, or act on pending/rejected work correctly. | Verify read-only authenticated visibility using an authorized test identity and metadata-safe sample. | YES if identity/session access is required. | NOT VERIFIED | No |
+  | HIST-01 | Historical source/fingerprints/backup | 44/44 aggregate fingerprint output exists; per-table artifacts unavailable; source-level historical reconciliation was not done. | Archived 1.4D output/report and backup/restore event evidence. | Historical accuracy cannot be claimed from aggregate or service-health evidence. | Defer history reconciliation until Owner provides documents and separate scope. | YES for historical import/reconciliation. | BLOCKED | No |
+  | VOL-01 | Disposable Docker resources | Three anonymous volumes remain without verified batch ownership. | Docker metadata; no content inspection or reference found in prior snapshot. | Reuse/deletion could affect unknown data. | Establish ownership before any mount, reuse, or deletion. | YES before any operation. | OPEN | No |
+
+  ### Function status and authorization boundary
+
+  At the initial 13:46 CEST snapshot, no function in the live workflow was
+  certified **PASS — LIVE VERIFIED** and the function-based audit was still
+  pending. The read-only audit completed during the 13:46–14:00 CEST window;
+  its evidence and updated statuses are recorded in the addendum below.
+  Historical TXT/Excel reconciliation, ranking, import, deduplication,
+  backfill, and reprocessing remain unauthorized and deferred.
+
+  ### Authorization and non-change record
+
+  Cash Freeze and protected-path controls remain in force. Any change to
+  protected source, migration, role/grant, runtime configuration, release,
+  deployment, or service requires the applicable explicit Owner authorization;
+  Cash behavior additionally requires an explicit Cash Owner exception. This
+  handoff update changed documentation only. No application source, migration,
+  database, role, permission, business data, Docker resource, volume, WhatsApp
+  session, or service was changed.
+
+  ### Live Workflow Read-Only Audit — 2026-10-24 (observed through 14:00:36 CEST)
+
+  This addendum supersedes the initial snapshot's pending-audit statement and
+  preserves that earlier observation. Checks were read-only. No message body,
+  Cash business row, WA-02 message content, secret, or credential was read.
+  No message was injected; no ingestion/replay command, database write,
+  permission change, restart, deployment, or cleanup was performed.
+
+  **Service and evidence boundary**
+
+  - During the audit window, `al-rifai-app-1` was `running (healthy)`,
+    `/api/health` returned `{"status":"ok"}`, and PostgreSQL 16.15 was healthy.
+    These establish service health only, not correct workflow completion.
+  - The approved WA-01 and WA-02 bridge health commands returned no body and
+    exit code 6. The reason/status and pairing state were not established; no
+    alternate bridge or namespace probe was used.
+  - The deployed app build contains `/api/escort-register`, `/api/register`,
+    `/api/vessels`, `/api/cash/[...path]`, `/review`, `/vessel`, `/register`,
+    and `/cash` routes. An unauthenticated `HEAD` to
+    `/api/escort-register` returned 401. No authenticated UI/API read was
+    attempted.
+  - Deployed worker/library source differs from the current workspace for
+    `message-ingestion-worker.ts`, `process-cash.ts`, `process-vessel.ts`,
+    `whatsapp-archive.ts`, and `escort-register.mjs`. The live image, not the
+    dirty workspace, is the runtime evidence. The `start-private-app.mjs`,
+    `live-cash.ts`, and `escort-intake-candidate.mjs` hashes matched their
+    workspace counterparts at the audit.
+
+  **Current metadata-only observations**
+
+  - For 2026-10-24, PostgreSQL had 44 WA-01 original-message rows, 44 archive
+    rows, and 44 source-event rows. The five most recent redacted metadata
+    samples each had an original, archive, source-event, and processed markers
+    for `archive`, `cash`, and `vessel`. This confirms internal PostgreSQL
+    correspondence only; the samples were not matched to the native store and
+    their message types or business meaning were not inspected.
+  - WA-01 had five archive cursors without recorded errors and three
+    compatibility cursors with `AUTHORIZED_COMPATIBILITY_READER_UNAVAILABLE`;
+    the latest observed cursor error was at 13:59:53 CEST. The deployed worker
+    routes group chats through compatibility mode. This is a verified
+    group-receive/processing failure at that observation, not proof that all
+    WA-01 messages are failing.
+  - WA-02 had 3,120 original rows and corresponding archive/cash/vessel
+    processing markers in PostgreSQL. No WA-02 message rows or content were
+    queried. Independently, deployed worker source calls `runAccount("wa-02")`
+    and iterates the configured chat list using `list_messages`; this conflicts
+    with the identity-only boundary. Actual current bridge authorization and
+    success of the latest calls remain unverified. The audit did not create
+    this deployed path or change its scope.
+  - The Escort register had aggregate counts of 382 `DRAFT` and 218 `REVIEW`.
+    No row content or mapping to the five recent messages was read.
+  - Deployed Escort logic gates clients by account and active contact and
+    prevents replay of the same account/source-hash/block key. It does not
+    implement the Owner-approved cross-message possible-duplicate rule
+    (same Mother Vessel + Lighter Vessel with duty dates equal or within
+    one day). Its assignment matching also uses one-character vessel-name
+    tolerance; the effect on live assignments was not tested.
+  - The deployed Cash processor was inspected as source only. It creates
+    processing/review classifications and does not itself establish a Cash
+    posting or approval. No Cash rows, recipient records, or authenticated
+    Accounts view were read; the verified Admin-to-verified-Accountant
+    recipient binding and office visibility remain unproven.
+  - The deployed ingestion loop retains cursors and uses exponential retry
+    backoff up to 60 seconds. Three WA-01 compatibility cursors still had the
+    reader-unavailable error at the latest observation; successful recovery
+    was not demonstrated.
+
+  **Function-by-function status**
+
+  | Function | Status | Evidence and limitation |
+  |---|---|---|
+  | WhatsApp Receive | PARTIAL | Recent WA-01 PostgreSQL records exist; pairing is unverified and all three observed WA-01 compatibility cursors failed. |
+  | Native Message Persistence | NOT VERIFIED | Native store and pairing/session state were not inspected. |
+  | PostgreSQL Message Mirroring | PARTIAL | 44 WA-01 original/archive/source-event rows and five internally joined samples; no native-store comparison. |
+  | Client / Admin / Accountant Identity Validation | PARTIAL | Deployed source contains account/contact and sender/direction checks; verified recipient binding and live identity decisions were not demonstrated. WA-02 scope conflict is separately recorded below. |
+  | Escort Order Parsing | PASS — CODE ONLY | Deployed parser/processor can form `DRAFT` and `REVIEW` operations; no recent message content or live classification was verified. |
+  | Vessel Duplicate Detection | FAIL — VERIFIED | Deployed logic lacks the approved cross-message vessel-pair/date duplicate check. |
+  | Accounts Parsing | PARTIAL | Deployed source supports review classification; exact Admin-to-Accountant identity/direction and an actual office review item were not verified. |
+  | Review Queue | PARTIAL | Escort aggregate review rows exist and routes are present; authenticated queue contents and Cash candidate visibility were not tested. |
+  | Register / Accounts Visibility | NOT VERIFIED | Routes are present; authenticated reads were not performed. |
+  | Retry / Reconnection / Recovery | PARTIAL | Cursor retention/backoff exists in code; current reader errors persisted and successful recovery was not observed. |
+  | Source Traceability | PARTIAL | Source metadata/provenance and internal PostgreSQL joins exist; native-source matching and content-level classification were not checked. |
+  | End-to-End Completion | NOT VERIFIED | No authorized recent message was traced from native source through correct business item to authenticated UI. |
+
+  No function is certified **PASS — LIVE VERIFIED**. Therefore the answer to
+  “can a new authorized message now be safely received, preserved, interpreted,
+  and shown as the correct office work item?” is **NOT VERIFIED**.
+
+  **Updated issue register**
+
+  | Issue ID | Affected function / component | Current observed state | Evidence and source | Business impact | Required corrective action | Owner decision needed | Status | Production changed? |
+  |---|---|---|---|---|---|---|---|---|
+  | WA-01-GROUP | WA-01 group receive / compatibility reader | Three compatibility cursors report `AUTHORIZED_COMPATIBILITY_READER_UNAVAILABLE`; archive cursors had no recorded error. | Read-only PostgreSQL cursor metadata and deployed worker branch, observed through 13:59:53 CEST. | Group-sourced work may be delayed or absent; direct-chat success does not cover groups. | Diagnose reader availability and cursor recovery in an approved, non-mutating check; do not replay. | YES before any bridge, permission, or protected runtime change. | OPEN | No |
+  | WA-02-SCOPE | WA-02 identity-only boundary | Deployed worker invokes `list_messages` over the configured chat list for WA-02; WA-02 processing-marker aggregates exist. Bridge acceptance of the latest calls is unknown. | Deployed worker source plus account-level aggregate metadata; no WA-02 content inspected. | Message scope may exceed the permitted identity-only role. | Owner must decide the authorized boundary; any code/config/bridge correction needs separate approval. | YES | OPEN | No |
+  | ING-02 | Native persistence / PostgreSQL mirror | 44 WA-01 records are internally joined in PostgreSQL; native-store source match is absent. | Bounded read-only aggregates and five redacted metadata samples. | Completeness, source fidelity, and duplicate-free end-to-end receipt remain unproven. | Smallest next test is an approved metadata-only source-to-archive comparison, without message bodies or replay. | YES if native identity access or credentials are required. | NOT VERIFIED | No |
+  | ESC-DUP-01 | Escort duplicate handling | Same-source replay key exists; approved cross-message vessel-pair/date rule is absent from deployed logic. | Deployed `escort-register.mjs` source; 0023 remains unapplied. | Possible duplicate orders may become separate drafts without the required review signal. | Implement and test only after separate approval for the exact protected paths and disposable validation scope. | YES | OPEN | No |
+  | ACC-ID-01 | Accounts identity / recipient validation | Parser and review classification exist in deployed source; verified Accountant recipient and live Admin-to-Accountant trace are unproven. | Deployed source inspection only; no Cash data or message content read. | Misidentified recipient or instruction could be omitted or misclassified. | Obtain an authorized redacted test case and verify identity gates without posting or approval. | YES, Cash Owner approval required. | BLOCKED | No |
+  | UI-01 | Review / Register / Accounts visibility | Deployed routes exist; unauthenticated Escort API `HEAD` returned 401; authenticated item visibility unknown. | Deployed route manifest and bounded `HEAD` response. | An accepted candidate may not appear to the intended office user or may display stale data. | Perform an authorized read-only authenticated visibility check with a metadata-safe item. | YES for session/test identity access. | NOT VERIFIED | No |
+  | REC-01 | Cursor retry / reconnection | Retry/backoff and cursor retention are present; three compatibility cursor failures persisted at the latest check. | Deployed worker source and cursor metadata. | Recovery after reader availability returns is unproven; delay may continue. | Verify a later natural recovery without forcing a replay or disconnect. | NO for passive observation; YES for intervention. | OPEN | No |
+
+  **Recent WA-01 trace sample (redacted; no content or IDs)**
+
+  | Sample | Dhaka source time / direction | Original + archive + source event | Processing markers | Native match / parser result / UI |
+  |---|---|---|---|---|
+  | 1 | 17:40 / outgoing | Present in PostgreSQL | `archive`, `cash`, `vessel`: processed | NOT VERIFIED |
+  | 2 | 15:26 / outgoing | Present in PostgreSQL | `archive`, `cash`, `vessel`: processed | NOT VERIFIED |
+  | 3 | 15:08 / outgoing | Present in PostgreSQL | `archive`, `cash`, `vessel`: processed | NOT VERIFIED |
+  | 4 | 15:08 / incoming | Present in PostgreSQL | `archive`, `cash`, `vessel`: processed | NOT VERIFIED |
+  | 5 | 14:39 / outgoing | Present in PostgreSQL | `archive`, `cash`, `vessel`: processed | NOT VERIFIED |
+
+  These are database metadata samples, not content-verified Escort, Accounts,
+  or non-business examples. Their suitability for those categories is unknown.
+  No synthetic sample or live-message test was created.
+
+  **Smallest safe next action:** After Owner approval where needed, perform
+  one bounded, metadata-only WA-01 native-store-to-PostgreSQL comparison using
+  an existing recent source identity, then an authorized authenticated
+  read-only UI check for the corresponding existing review item. Do not access
+  message bodies or Cash rows, inject/replay, change WA-02 scope, apply
+  migrations, alter roles, restart, deploy, or clean up resources. If source
+  identity cannot be compared without content or privileged access, retain
+  **NOT VERIFIED** and request that specific authorization.
+
+## Cash Unfreeze and WhatsApp Integration Recovery — Updated 2026-10-25
+
+This is the current handoff for the Owner-authorized source-development and
+isolated-test recovery. Al-Rifa'i is in a modular business-application
+rebuild while retaining its existing VPS, PostgreSQL, and WhatsApp
+infrastructure. The authorization covers the existing Cash, WhatsApp,
+Message Mirror, Vessel, and UI integration scope; it does not authorize
+production migration/writes, deployment, service or Bridge restart, Live Sync,
+historical backfill, WA-02 permission expansion, or financial posting.
+
+### Completed source work; not deployed
+
+The advisory Cash path guard no longer blocks the authorized source work; it
+remains non-authoritative for production. The Mirror worker routes newly
+persisted WA-01 native messages through the existing source classifier and
+immutable original-message store, then creates the existing pending Cash or
+Vessel marker only for an eligible source. Duplicate original messages do not
+create downstream work. WA-02 is identity-only in the worker: it validates
+identity and returns before message or contact reads.
+
+Relevant app paths:
+
+- `apps/al-rifai/db/migrations/0025_whatsapp_message_mirror.sql` — authoritative
+  additive SQL design for the independent `whatsapp_mirror` schema.
+- `apps/al-rifai/scripts/message-mirror-worker.ts` — generic WA-01/02/03
+  connector, per-bridge/chat activation checkpoints, cursor persistence,
+  source evidence, conservative protocol-identity deduplication, retries,
+  and recovery.
+- `apps/al-rifai/app/message-mirror/page.tsx` and
+  `apps/al-rifai/app/vessel-dashboard.tsx` — authenticated read-only Mirror
+  page and navigation link.
+- `apps/al-rifai/tests/message-mirror.mjs` — isolated unit and disposable
+  PostgreSQL integration tests.
+- `apps/al-rifai/tests/whatsapp-archive-ingestion.mjs` — Cash/Vessel routing,
+  source-safety, and read-only uploaded-export parser fixtures.
+- `apps/al-rifai/lib/whatsapp-archive.ts` — shared Mirror-to-domain route
+  helper; reuses existing source authorization and persistence.
+- `apps/al-rifai/scripts/cash-freeze-guard.mjs` — advisory path notice; it no
+  longer enforces the superseded freeze.
+- `apps/al-rifai/Dockerfile`,
+  `apps/al-rifai/compose.yaml`, and
+  `apps/al-rifai/release/start-private-app.mjs` — build/test/runtime wiring;
+  Compose keeps `ALRIFAI_MESSAGE_MIRROR_ENABLED` set to `0`.
+- `apps/al-rifai/docs/WHATSAPP-MESSAGE-MIRROR.md` — operational and test
+  documentation.
+
+The workspace also contains native-reader MCP source changes in
+`services/whatsapp/source/whatsapp-mcp-server/main.py`,
+`capabilities.py`, and `native_reader.py`, with related tests in
+`tests/test_native_live_mirror.py` and `tests/test_capabilities.py`. This
+recovery changed the capability test's account-alias setup; it did not change
+runtime policy or Bridge permissions. The existing app MCP relay client in
+`apps/al-rifai/scripts/message-ingestion.ts` is reused.
+
+### MCP interface and permissions
+
+The Mirror uses the native live contract, not a renamed archive API:
+
+| Function | Canonical tool | Required capability |
+|---|---|---|
+| Bound account/stream identity | `get_native_account_identity` | `native.identity.read` |
+| Ordered event metadata/cursor | `list_native_events` | `native.events.read` |
+| Message envelopes/content | `list_native_messages` | `native.events.read` and `native.content.read` |
+| Saved contact lookup | `get_contact` | `contacts.read` |
+
+`list_archive_messages` is archive-history paging and `list_stored_messages`
+is stored-history access; neither is interchangeable with the live cursor
+contract. Existing interfaces were retained rather than duplicated or
+renamed. The worker treats `get_contact` as optional and keeps the saved
+contact field separate from push-name display fallback.
+
+WA-01 still requires the listed capabilities plus an Owner-approved chat
+scope in its actual runtime consumer policy. No runtime policy, Bridge
+configuration, or permission was changed here. WA-02 remains identity-only
+in worker source; the prior runtime observation showed legacy message/contact
+tools in its advertised list, so runtime policy alignment remains unverified
+and must not be bypassed. Production Bridge tools were not called.
+
+### Database design (not applied to production)
+
+The migration defines exactly these six tables:
+
+| Table | Purpose |
+|---|---|
+| `whatsapp_mirror.bridges` | Per-Bridge connection, message-access, sync, activation, and error status. Seeds WA-01/02 as unverified and WA-03 as ready for connection. |
+| `whatsapp_mirror.schema_migrations` | Mirror-only migration identifier, SHA-256 checksum, and application timestamp. |
+| `whatsapp_mirror.messages` | Logical message records; verified protocol identity is the cross-Bridge deduplication key, while uncertain identities remain unresolved. |
+| `whatsapp_mirror.message_sources` | Separate source evidence per Bridge/stream/event, linked to a logical message when appropriate; unique source-event identity prevents duplicate source rows. |
+| `whatsapp_mirror.message_events` | Event metadata associated with a source record and, where available, its logical message. |
+| `whatsapp_mirror.sync_checkpoints` | Independent activation boundary, durable cursor, retry count, and last-success state for each Bridge/chat pair. |
+
+The exact columns, PostgreSQL types, defaults, constraints, and indexes are
+defined only by the authoritative SQL migration above; consult that file for
+the full schema. The worker's migration mode is limited to this Mirror
+migration and does not invoke the legacy migration runner.
+
+### Validation evidence and limits
+
+| Check | Result |
+|---|---|
+| Mirror worker, disposable PostgreSQL migration/checkpoint/dedup/retry/restart, Cash/Vessel routing, and uploaded exports | **PASS** — 16 Node tests, 0 failures, 0 skips; temporary isolated PostgreSQL and read-only export mounts. |
+| Cash/Vessel and Cash-safety regression selection | **PASS** — 39 Node tests, 0 failures, 0 skips. |
+| WhatsApp MCP full Python suite, including native contact scoping, WA-02 identity-only capability catalog, native profile, and `get_contact` tests | **PASS** — 254 tests under Python 3.12.15 in an isolated image; Ruff check and format check also pass. |
+| TypeScript typecheck | **PASS** — `tsc --noEmit --pretty false --incremental false` under Node 22.23.3. |
+| Earlier saved-contact/LID focused verification | **PASS — PRIOR EVIDENCE** — 32 tests (5 Node, 27 Python), separate from this recovery validation. |
+| Full app suite, production runtime capability probe after policy correction, authenticated UI flow | **NOT RUN / NOT VERIFIED** |
+| Production migration, deployment, activation, and actual message delivery | **NOT RUN / NOT VERIFIED** |
+
+All executed tests used isolated environments; the reference exports were
+read-only fixtures and were not imported into any database. No production
+Mirror schema or activation cursor was created.
+
+### Production and Bridge status
+
+- **Not deployed or activated:** no production Mirror migration, app image
+  deployment, or Live Sync activation was performed. Compose remains disabled.
+- **WA-01:** read-only runtime policy metadata showed the legacy owner-reader
+  still has broad legacy read grants. The separate
+  `alrifai-wa-01-native-reader` entry has native event/content grants but
+  lacks native identity and scoped contact grants; the app's authenticated
+  runtime discovery did not expose the worker-required native tools. No
+  approved chat/participant values were supplied.
+- **WA-02:** read-only runtime policy metadata showed
+  `wa-02-owner-reader` has legacy message, contact, media, and calls grants in
+  addition to native identity. It is not identity-only in the current policy;
+  the observed runtime tool list also exposed legacy message/contact tools.
+  Do not use those tools. Runtime policy alignment is blocked pending the
+  approved policy update.
+- **WA-03:** no running container was present in the observed inventory;
+  it remains unconnected / ready for connection.
+- No activation timestamp, production source cursor, mirrored-message count,
+  or successful production sync time exists for this Mirror.
+
+### Authorized next work and boundaries
+
+Wait for Owner review of the completed source changes and test evidence.
+Before any production activation, the Owner must separately authorize the
+required runtime policy/configuration and release scope. Verify WA-01's
+message/contact capabilities and authorized chat scope in runtime; keep
+WA-02 identity-only and resolve its advertised-tool/policy discrepancy
+without granting new authority; then separately approve migration,
+deployment/restart, and Live Sync. Authenticated UI presentation and live
+delivery remain unverified.
+
+### Permission-correction source preparation
+
+The source now offers `native.contacts.read` as a separate, narrow grant for
+`get_contact`, requiring `native.events.read` and restricting lookup to
+approved native chat JIDs and explicitly listed participants. This grant does
+not expose `search_contacts`. Native profile validation rejects malformed
+JIDs and participant entries that are not keyed by an approved chat. WA-02
+identity-only catalog/denial behavior and scoped native contact lookup are
+covered by the isolated Python suite above.
+
+No runtime policy or profile was changed. Exact protected policy paths are
+`/etc/vps/services/whatsapp/wa-01-consumer-policy.json` and
+`/etc/vps/services/whatsapp/wa-02-consumer-policy.json`; the WA-01 profile is
+`/var/lib/vps/whatsapp/wa-01/control/native-reader-profile.json`. The needed
+policy state is WA-01 Mirror grants `native.identity.read`,
+`native.events.read`, `native.content.read`, `native.contacts.read` (without
+broad `contacts.read`) and WA-02 designated consumer grant
+`native.identity.read` only. Before profile/app allowlists can be populated,
+the Owner must provide verified WA-01 Cash direct-chat JID, verified Admin
+sender and designated Accountant recipient identities, separately approved
+Vessel chat JIDs, and exact group participant JIDs. No JID or participant
+was invented or copied into source/docs. The Mirror must use the scoped WA-01
+consumer's private token; credentials remain outside this handoff.
+
+No production migration or business-data write, deployment/image release,
+app or Bridge restart, Live Sync activation, historical backfill/replay,
+WA-02 access expansion, or financial posting/approval change was performed
+or is authorized. Keep uncertain identity/intent in review, preserve
+source evidence and existing approval controls, and do not read secret
+contents or send WhatsApp messages.
+
+---
+
+## Owner-Approved Seven-Conversation Implementation — 2026-10-27
+
+Recorded by the implementation session. Additive: no earlier observation above
+was replaced.
+
+### Applied configuration (identifiers are DB/config data, not source)
+- `public.conversation_scope`: 7 approved WA-01 conversations (1 Cash direct,
+  3 Vessel direct, 3 Vessel groups); 2 direct conversations carry a verified
+  PN↔LID alias (Cash Accountant, Escort Hridoy).
+- `public.whatsapp_identity_aliases`: 4 rows (2 BRIDGE_LID_MAP, 2 OWNER_PROVIDED).
+- `public.escort_client_contacts`: 8 active (3 Owner-provided, 5 Owner-approved
+  group participants); `public.escort_client_group_authorizations`: 20 rows.
+- Seed files are root-only 0600 under `/var/lib/vps/al-rifai/owner-review/`.
+
+### Historical backfill (WA-01 store, read-only)
+- 7,770 messages across the 9 approved addresses staged in
+  `public.wa01_backfill_staging` (batch `backfill-20261026`); 4,591 new
+  `whatsapp_messages_original` rows, remainder already stored.
+- Cash: 2,278 messages in the Cash chats, 2,103 Owner outgoing, 1,819 payment
+  messages → 1,819 canonical instructions (৳9,39,889.00) in REVIEW state.
+  PN 1,793 + LID 26 with zero content overlap. 202 ID-shaped lines were
+  rejected by the strict parser and were not published.
+- Vessel: 4,560 messages queued; 19 canonical register rows (Rezaul 15 DRAFT /
+  4 REVIEW). Hridoy's 116/106 derivations matched pre-transition facts by
+  (account, source_hash, block_key) and were linked, not duplicated.
+- Group reprocess: 754 authorized incoming group messages, 35 carried
+  order-shaped blocks, 0 new drafts (assignment confirmations without a client
+  order, or lighter-only "ready for program" lists).
+- Run ledger: `cash_duplicate 0`, `unmatched 0`, `review_queued 0`.
+
+### Provenance separation
+- Current Cash 1,819 / Archive Cash 1,610; Current register 19 / Archive 608;
+  Current programs 0 / Archive programs 5. `dataset_scope` marks 2 evidence
+  datasets ARCHIVE (accounts, conversations). Zero Current postings.
+- `/cash/archive` page and `?scope=archive` on `/api/cash/summary`,
+  `/api/escort-register`; `/vessel` `source=archive`.
+
+### Live synchronization
+- Ingestion worker is native-reader only and scope-driven; the retired
+  `list_messages` / `list_archive_messages` / `list_stored_messages` paths and
+  the reserved-word SQL alias that aborted every cycle were removed.
+- Cash continuation starts at boot (`instrumentation.ts`) and is review-only.
+  Both Cash channels hold a durable `native_cursor`; replaying the activation
+  boundary produced 0 duplicate instructions across two restarts.
+- 7 Vessel chats still fail closed: the bridge native-reader grant lists only
+  the 2 Cash chats and returns a generic "Tool execution failed".
+
+### Migrations and deployment
+- Applied + ledgered: 0023, 0024, 0026, 0027, 0028 (native cursors),
+  0029 (native cursor failure mode). Ledger rows: 29.
+- Image `sha256:ffb9e49e23c1aa808d5d9bf4e4326955df3ed42524f1914ae470fd9e9f145f32`
+  deployed through `compose.yaml`; bridges and PostgreSQL were not restarted.
+
+### Remaining blockers (unchanged root causes)
+1. Bridge native projection still stalls at `native_events.event_seq = 1306`
+   (2026-10-20T08:53:28Z); new rows reach `messages.db` through the history path
+   that bypasses the native-event writer. Fixing needs a bridge restart or
+   reconfiguration — Owner authorization required.
+2. Native reader grants cover only the 2 Cash chats; the 3 Vessel direct chats
+   and 3 groups cannot be read live until the bridge profile is extended.
+3. `/var/lib/vps/whatsapp/wa-01/store` remains 0700/0600; the app cannot read
+   SQLite directly, so historical extraction ran as a read-only probe inside the
+   bridge container.
+4. Authenticated browser verification of the Cash/Vessel UI still requires the
+   Owner's login; APIs were verified fail-closed and the UI is covered by tests.
+
+---
+
+## Live Sync Blocker Fixes — 2026-10-27 (second session)
+
+Additive record. Identifiers remain configuration data; none were added here.
+
+### 1. Native event writer — root cause
+The deployed WA-01 binary never contained the native event writer. Evidence:
+`native_events`/`native_stream`/`native_payloads` string counts are 0 in
+`local/vps-whatsapp:20261020-ingestion` and
+`local/vps-whatsapp-mcp-candidate:20261025-0933`, but 24/4/1 in
+`alrifai-whatsapp:business-workflows-20261015`. Last event
+`event_seq=1306` at `2026-10-20T08:53:28Z`; 1,412 messages were stored after
+that through the history-sync path (no native events, no projection errors).
+A restart alone could not fix this; the image had to be rebuilt from the
+current source, which contains `appendNativeMessageEvent`.
+
+Fix: `local/vps-whatsapp:20261027-native-writer`
+(`sha256:2067b1fe1a457823e3f7c3cfe61b16fa03f56a5092f39b733df352ac53af49b7`),
+built from `/opt/vps/services/whatsapp/source` (go vet + go test pass), with an
+additional guard so chats outside the native JID pattern (status broadcast,
+newsletters) are stored without a native event instead of being rolled back.
+WA-01 recreated; session and store untouched; WA-02 not restarted.
+Observed after deploy: `event_seq` advanced to 1307 (live reaction in an
+out-of-scope group), projection `not_applicable`, message stored with
+`identity_state=RESOLVED`, and the app correctly ingested nothing for it.
+
+### 2. Reader grants
+`/var/lib/vps/whatsapp/wa-01/control/native-reader-profile.json` now lists 9
+chats (2 Cash, 4 Vessel direct addresses including the Hridoy LID alias, 3
+Vessel groups), 20 group participant entries, epoch 3→4. Backup:
+`/var/lib/vps/al-rifai/backups/pre-native-fix-20261027/native-reader-profile.json.bak`.
+Verified per chat: all 9 approved chats ALLOW, an out-of-scope direct chat and
+an out-of-scope group DENY. WA-02 unchanged.
+
+### 3. Vessel extraction
+Three demonstrated defects fixed in `lib/escort-register.mjs`:
+- office posts inside an approved group were unrouted; they now route as
+  `VESSEL_GROUP_SOURCE` and are attributed only when the block names exactly
+  one authorized participant of that group (mobile first, then exact name);
+- assignments missing escort mobile / duty date / shift were discarded; they
+  are now REVIEW rows with `ASSIGNMENT_EVIDENCE_INCOMPLETE:*` reasons and no
+  business key (nothing is confirmed);
+- LID-addressed direct chats were unmapped; `scopePhoneAliases` resolves
+  Owner-approved aliases to the conversation's phone.
+Reprocess (`scripts/reprocess-approved-groups.mjs`, now scope-driven and both
+directions): 5,492 messages scanned, 2,771 routed, 603 parsed, 50 new rows
+(2 DRAFT + 48 REVIEW). Canonical register: 69 rows (17 DRAFT / 52 REVIEW);
+Archive 608 unchanged; 0 duplicate (account, source_hash, block_key).
+Still unattributed by design: 178 group assignment blocks whose sender was lost
+by the history path, and 52 office-posted assignments naming escorts who are not
+authorized participants. Both need an Owner decision before widening contacts.
+
+### 4. Status
+Cash live continuation active (both channels have cursors, 0 duplicates,
+1,819 canonical instructions unchanged). Vessel reader now authorized for the
+seven conversations. End-to-end new-message verification for an approved chat
+was still pending when this record was written; the writer itself is proven in
+production by event 1307.
+
+---
+
+## Canonical Vessel Programs + Archive History — 2026-10-27 (third session)
+
+Backup before writes: `/var/lib/vps/al-rifai/backups/pre-canonical-vessel-20261027.dump`
+(63.5 MB, sha256 prefix `65d619ebaf03fa8a`). Migration 0030 applied and ledgered
+(30 ledger rows): epoch-scoped register/source uniqueness and INSERT on
+`programs` for `ir_review_runtime`.
+
+Canonical reconstruction from the WA-01 message database (not from the old
+application Archive):
+- `scripts/backfill-vessel-canonical.mjs` (dry by default, `--apply`).
+- Canonical register: 69 → 377 rows (206 DRAFT / 171 REVIEW); legacy 608 untouched.
+- Canonical programs: 0 → 64 `Confirmed` (45 exact, 19 spelling-variant);
+  64 `program_assignments`; 0 duplicate ids or source blocks; replay dry run = 0.
+- Review reasons: 64 linked confirmations, 55 unmatched, 48 incomplete assignment
+  evidence, 4 duplicate-ambiguous.
+- Escort Mobile → Employee ID: 48 resolved via `employee_master`, 16 unresolved.
+- Cash unchanged: 1,819 canonical / ৳939,889; 1,610 archive; 0 current postings.
+
+Deployed image `sha256:1dd057bddc89b3376f465b77f02d38ba7010071ecf2dd774a507e9ef96cf6174`
+(compose pin updated). Health 200, auth-gated APIs 401, `/cash/archive` 200,
+9/9 native cursors, 2/2 Cash channels, 0 pending processing rows, restart
+recovery verified (no duplicate programs or instructions).
+
+Unverified: authenticated browser views (Owner login) and a live new-message
+end-to-end pass — no approved-chat message arrived during the session.
+
+---
+
+## FINAL OPERATIONAL HANDOFF — 2026-10-27 (acceptance + finishing)
+
+### VERIFIED
+- Final image `sha256:20e144f06e7598c2eb740c5405442f36941db0bec24626ba12a60382be1f8aa1`
+  deployed via `compose.yaml` (previous 1dd057bd); container healthy; `/api/health`
+  200; database `alrifai`; migration ledger 30. This image adds the derived
+  review classification (`reviewClass`, `actionableReview`, `confirmedEvidence`)
+  and the Action-required / Confirmed-evidence UI.
+- Cash Current 1,819 instructions / BDT 939,889.00, 0 postings, 0 duplicates;
+  Cash Archive 1,610 / 1,586 postings, separate epoch.
+- Vessel Current 377 register rows (206 DRAFT / 171 REVIEW), 64 confirmed
+  programs, 64 assignments; Archive 608 register rows + 5 draft programs.
+- All 64 programs link to a canonical DRAFT order row, the outgoing Admin
+  confirmation in the same client conversation (PN/LID aware) and an assignment;
+  0 duplicate programs, assignments, source blocks or business keys.
+- 19 spelling-variant confirmations have exact normalized Master Mobile; 0
+  conflicting candidates.
+- 64 REVIEW rows are confirmed-linked evidence; 107 actionable (55 unmatched,
+  47 incomplete, 5 duplicate-review).
+- 16 programs have unresolved Employee Master links: 0 exact/near mobile, 1
+  name-only conflict, 2 mobiles appear only as payout destinations.
+- API authentication fail-closed; epoch/dataset scope separation in code.
+- WA-01 ingestion: 9/9 cursors, 2/2 Cash channels, 0 pending/error; new
+  out-of-scope events correctly excluded.
+
+### IMPLEMENTED BUT NOT VERIFIED
+- Authenticated Owner UI rendering (no Owner session available during checks).
+- New authorized-message end-to-end path (no approved-chat message has arrived
+  since deployment; native events 1307–1310 were out-of-scope).
+
+### NEEDS REVIEW
+- 55 unmatched outbound confirmations: investigation found 5 with a similar
+  order but 0 conclusive; keep as actionable review.
+- 47 incomplete assignments: 4 have later messages in the same conversation but
+  none supplies the missing field conclusively; keep in review.
+- 5 duplicate-review rows (two same-lighter pairs + one incomplete/ambiguous);
+  Owner decision required before any merge.
+- 16 employee links (see above).
+- 3 two-character vessel-name variants (e.g. `Belforte` / `Belforte At`) with
+  exact Master Mobile; spot-check recommended, do not undo automatically.
+
+### BLOCKED
+- No technical blocker. Owner login and a genuine new authorized message are
+  required to close the two NOT VERIFIED items.
+
+### Safe next steps
+1. Owner logs in and checks `/vessel` (Current, Archive History, Action required,
+   Confirmed evidence) and `/cash` + `/cash/archive`.
+2. On the next real authorized message, trace native event → mirror → processor
+   → canonical row → page; do not send test messages.
+3. Resolve NEEDS REVIEW items only with source evidence and Owner approval.
+
+### Prohibited
+Rebuild/re-pair/reset, cursor resets, table clears, write-mode historical
+reprocessing, Cash posting/approval, WhatsApp sends, WA-02 scope expansion,
+employee merges, or deployments without Owner authorization.
+
+---
+
+## GitHub & Review-Age Verification — 2026-10-27
+
+### Repositories (read-only inspection; nothing committed or pushed)
+- **VPS repository:** `/opt/vps`, remote `https://github.com/arshiyaazim/opt_vps.git`,
+  branch `main`, HEAD `39ce58fe10bb7bbe747325295e452cbd09561bee` ("first commit").
+  No upstream configured; ahead/behind cannot be determined without fetching.
+- **Application repository:** `/opt/vps/apps/al-rifai` is a **nested independent
+  repository** (own `.git`, no `.gitmodules`), remote
+  `https://github.com/arshiyaazim/opt_vps.git` — the same URL as the parent, not
+  an app-specific repository. Branch `main`, HEAD
+  `6b9b18d9f10d8a0cf76e6d95d45c0b89207c0816` (2026-10-16). No upstream configured.
+- The parent indexes `apps/al-rifai` and `services/whatsapp/source` as gitlinks
+  (mode `160000`) without submodule configuration.
+- **Image-to-commit:** the deployed image was built from the dirty working tree
+  (115 app-repo entries), not from HEAD. Commit-level traceability is
+  **NOT VERIFIED**; the image maps to the build snapshot only. All local changes
+  remain uncommitted and unpushed.
+
+### Review age (source WhatsApp timestamps, Dhaka date; window 2026-07-27 → 2026-10-27)
+- Actionable 107: **95 RECENT_REVIEW**, **12 UNVERIFIED_LEGACY**, 0 DATE_UNVERIFIED.
+  Breakdown — unmatched 55 (45 recent / 10 legacy), incomplete 48 (46/2),
+  duplicate-review 4 (4/0).
+- Employee links unresolved 16: **14 recent / 2 legacy** (by program duty/order date).
+- Spelling spot-check 3 (two-character distance): **1 recent / 2 legacy**.
+- Resolved by new evidence: **0**. Derived `reviewAge` is presentation-only; no
+  row status or source evidence changed.
+
+### Status
+- Authenticated UI acceptance: **NOT VERIFIED** — the private validation Basic-auth
+  credential is Owner-held and was not read or used.
+- Live E2E: **NOT VERIFIED** — no authorized-chat message has arrived; native
+  events 1307–1312 were all out-of-scope.
+
+---
+
+## Cash/Vessel workflow recovery — 2026-10-27 (implementation, not deployed)
+
+### Vessel parser defect fixed
+- Cause: October assignments use a malformed shift suffix (`22/10/26 ((N)`).
+  `parseEscortDate` required a single parenthesis, so the duty date and shift were
+  dropped and 14 assignments stayed INCOMPLETE.
+- Fix: `lib/escort-intake-candidate.mjs` accepts repeated/mismatched parentheses
+  around the shift (no value guessing).
+- Evidence: all 14 assignments now parse date+shift; 11 match a unique original
+  order (6 EXACT, 5 VARIANT), 3 remain unmatched. Duty dates are 2026-10-22..25.
+- `scripts/reconcile-vessel-assignments.mjs` (dry run by default) re-parses the
+  stored source text, fills only missing fields, links the confirmation and
+  creates one program per Lighter. Dry run: scanned 14, confirmable 11,
+  unmatched 3, programs 11. **--apply is a production DB write and is NOT run.**
+
+### Cash/Vessel read-only API + frontend
+- `GET /api/cash/summary` now also returns `employees`, `payouts`, `complete`,
+  `notes` (same server-owned scope/filters); the Cash page uses the global
+  counts and keeps pagination (100/page, 19 pages for 1,819).
+- `GET /api/escort-register?summary=1` returns summary + `latestSourceTime`
+  without rows/source text; the Vessel header uses it and now says
+  "latest register activity" (not "latest source activity").
+- Built image `sha256:049627fa8eb3c95aaed45b0fa2ac29b97965ca74e8bf44b6541a696f687a3963`
+  (tag `local/al-rifai:owner-approved-20261027e`); **not deployed**.
+
+### Pending Owner approval
+1. Run `reconcile-vessel-assignments.mjs --apply` (11 confirmed programs).
+2. Deploy the new image (compose pin + recreate app only).
+3. Live end-to-end verification with a genuine new authorized message.

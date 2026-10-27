@@ -1,0 +1,36 @@
+name: vps-infra
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: alrifai
+      POSTGRES_USER: vps_pg_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+      PGDATA: /var/lib/postgresql/data
+    secrets:
+      - postgres_admin_password
+    volumes:
+      - type: bind
+        source: /var/lib/vps/postgres
+        target: /var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 1m
+    shm_size: 256mb
+
+secrets:
+  postgres_admin_password:
+    file: /etc/vps/infra/postgres_admin_password
+
+networks:
+  backend:
+    external: true
+    name: vps-backend

@@ -1,0 +1,157 @@
+# Owner-approved privacy cutover; retained original belongs to vps-whatsapp and must not be started concurrently.
+name: vps-whatsapp-privacy
+services:
+  whatsapp-wa-01:
+    image: sha256:ae009303de09f564390d14a5ef1f7c30018040b52a73074f273a8dd67683bb33
+    build:
+      context: ./source
+      dockerfile: Dockerfile
+    container_name: vps-whatsapp-wa-01-cap4-20261011
+    stop_grace_period: 30s
+    user: "10002:10002"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    command: [service, --wait-unpaired]
+    environment:
+      MAX_MCP_CLIENTS: "4"
+      WHATSAPP_AUTH_POLICY: /run/secrets/consumer-policy.json
+      WHATSAPP_ACCOUNT_ALIAS: wa-01
+      WHATSAPP_MCP_SOCKET: /runtime/control/mcp.sock
+      WHATSAPP_DEVICE_NAME: VPS wa-01
+      WEBHOOK_ENABLED: "false"
+      WHATSAPP_AUTO_DOWNLOAD_MEDIA: "false"
+      WHATSAPP_NATIVE_PROFILE: /runtime/control/native-profile.json
+      WHATSAPP_NATIVE_READER_PROFILE: /runtime/control/native-reader-profile.json
+      WHATSAPP_CALL_AUTOREJECT: configured
+      WHATSAPP_CALL_CONSUMER_ID: alrifai-wa-01-call-agent
+      WHATSAPP_CALL_CONTROL_SOCKET: /runtime/control/call-policy.sock
+    volumes:
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-01/store
+        target: /runtime/store
+        bind: {create_host_path: false}
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-01/outbox
+        target: /runtime/outbox
+        bind: {create_host_path: false}
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-01/control
+        target: /runtime/control
+        bind: {create_host_path: false}
+      - type: bind
+        source: /etc/vps/services/whatsapp/wa-01-consumer-policy.json
+        target: /run/secrets/consumer-policy.json
+        read_only: true
+        bind: {create_host_path: false}
+    tmpfs: ["/tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777"]
+    cpus: 1.0
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+    networks: [whatsapp-private]
+  whatsapp-wa-02:
+    image: local/vps-whatsapp:20261020-ingestion
+    build:
+      context: ./source
+      dockerfile: Dockerfile
+    container_name: vps-whatsapp-wa-02-cap4-20261011
+    profiles: [wa-02]
+    stop_grace_period: 30s
+    user: "10003:10003"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    command: [service, --wait-unpaired]
+    environment:
+      MAX_MCP_CLIENTS: "4"
+      WHATSAPP_AUTH_POLICY: /run/secrets/consumer-policy.json
+      WHATSAPP_ACCOUNT_ALIAS: wa-02
+      WHATSAPP_MCP_SOCKET: /runtime/control/mcp.sock
+      WHATSAPP_DEVICE_NAME: VPS wa-02
+      WEBHOOK_ENABLED: "false"
+      WHATSAPP_AUTO_DOWNLOAD_MEDIA: "false"
+      WHATSAPP_NATIVE_READER_PROFILE: /runtime/control/native-reader-profile.json
+    volumes:
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-02/store
+        target: /runtime/store
+        bind: {create_host_path: false}
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-02/outbox
+        target: /runtime/outbox
+        bind: {create_host_path: false}
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-02/control
+        target: /runtime/control
+        bind: {create_host_path: false}
+      - type: bind
+        source: /etc/vps/services/whatsapp/wa-02-consumer-policy.json
+        target: /run/secrets/consumer-policy.json
+        read_only: true
+        bind: {create_host_path: false}
+    tmpfs: ["/tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777"]
+    cpus: 1.0
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+    networks: [whatsapp-private]
+  whatsapp-wa-03:
+    image: sha256:e88dc9fde426fe6d441d0ae344b211778382e9ff4474b87926704e4b5900ff06
+    container_name: vps-whatsapp-wa-03-privacy-20261010
+    profiles: [wa-03]
+    stop_grace_period: 30s
+    user: "10004:10004"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    command: [service, --wait-unpaired]
+    environment:
+      WHATSAPP_AUTH_POLICY: /run/secrets/consumer-policy.json
+      WHATSAPP_ACCOUNT_ALIAS: wa-03
+      WHATSAPP_MCP_SOCKET: /runtime/control/mcp.sock
+      WHATSAPP_DEVICE_NAME: VPS wa-03
+      WEBHOOK_ENABLED: "false"
+      WHATSAPP_AUTO_DOWNLOAD_MEDIA: "false"
+    volumes:
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-03/store
+        target: /runtime/store
+        bind: {create_host_path: false}
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-03/outbox
+        target: /runtime/outbox
+        bind: {create_host_path: false}
+      - type: bind
+        source: /var/lib/vps/whatsapp/wa-03/control
+        target: /runtime/control
+        bind: {create_host_path: false}
+      - type: bind
+        source: /etc/vps/services/whatsapp/wa-03-consumer-policy.json
+        target: /run/secrets/consumer-policy.json
+        read_only: true
+        bind: {create_host_path: false}
+    tmpfs: ["/tmp:rw,nosuid,nodev,noexec,size=128m,mode=1777"]
+    cpus: 1.0
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+    networks: [whatsapp-private]
+networks:
+  whatsapp-private:
+    external: true
+    name: vps-whatsapp_whatsapp-private
+# No host ports, Docker socket, AL-RIFA'I dependency, vps-backend or PostgreSQL access.
+# Broker co-locates under the same nonroot account; stdio clients use the Unix socket relay.

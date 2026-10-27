@@ -1,0 +1,9 @@
+.git
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.venv
+**/store
+**/*.db
+**/.bridge-token
+**/*.env

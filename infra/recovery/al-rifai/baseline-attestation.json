@@ -1,0 +1,149 @@
+{
+  "formatVersion": 1,
+  "createdUTC": "2026-10-08T08:04:45.208171+00:00",
+  "target": "alrifai_restore_20261008_053528",
+  "cluster": "7694012476208082978",
+  "archive": {
+    "path": "/var/backups/vps/postgres/alrifai-current-baseline-20261008T053528Z.dump",
+    "sha256": "5f12fdeff34aac57e733af012e52daebb97f44fa7d56d962166fa4c85debcded",
+    "bytes": 1608294,
+    "creationUTC": "2026-10-08T05:36:34Z",
+    "format": "CUSTOM",
+    "archiveVersion": "1.15-0",
+    "tocEntries": 34
+  },
+  "fingerprints": {
+    "state": "96f4fe553fdd54d5e10869696dd9e5ded3e9da434c4fe4cc37496599be0464ba",
+    "snapshots": "3590e6eba9081e3f0bc79c90b35375a636b76b16fe3a4043adad4edf93bb0757",
+    "catalog": "146c5dbf5f3a2f88ade4dbf893eeba189035b03b99b5cb798ae8531060f5a174"
+  },
+  "readPlanSHA256": "d3b4a25e19bff52afeb380312ee70097a398cd989bd44a982ceb15d0c6d0d749",
+  "provenance": {
+    "classification": "RECONSTRUCTED_NOT_ORIGINAL_STAGE_B",
+    "originalMachineReadableBaselineRecovered": false,
+    "preservedOriginalArtifact": "current-baseline custom archive",
+    "stageBExecutionEvidence": "owner conversation reports; held exported snapshot 00000003-00001C1A-1",
+    "c0Evidence": "offline expected rows and separately read catalog metadata reproduced three reported hashes",
+    "c1CatalogMethod": "offline unchanged migration parsing and recorded PostgreSQL definition rendering; canonical hash equals recorded Stage B/C0",
+    "migrationTimestampSource": "Stage B reported six ledger rows, all applied_at 2026-10-07T21:05:59.743Z",
+    "snapshotSource": "checksum-verified external files and reviewed expectedSnapshots logic",
+    "limitations": [
+      "not a recovered original Stage B attestation",
+      "not extracted archive data",
+      "no restore has been verified",
+      "no current database inspection performed by C1"
+    ]
+  },
+  "serialization": {
+    "encoding": "UTF8",
+    "state": "one SHA-256; ordered tables; update(tableName), update(JSON.stringify(SELECT * ORDER BY id rows)); no separators",
+    "tables": [
+      "programs",
+      "reviews",
+      "datasets",
+      "site_cash_archive",
+      "site_operation_notes",
+      "site_payment_drafts",
+      "site_settlement_drafts",
+      "site_source_snapshots",
+      "alrifai_schema_migrations"
+    ],
+    "timestamps": "applied_at decoded to JavaScript Date, JSON.stringify UTC ISO",
+    "snapshots": "SHA-256(JSON.stringify(snapshot rows ordered by id with original field order))",
+    "catalog": "SHA-256(JSON.stringify(catalog)); keys columns,constraints,indexes,triggers,function,ownership,grants; exact SQL projection/ordering",
+    "normalization": "no payload, ownership or grants normalization; names/OIDs/observation times excluded from legacy fingerprint projections"
+  },
+  "expectedCounts": {
+    "applicationTables": 8,
+    "ledgerTables": 1,
+    "migrations": 6,
+    "emptyOperationalTables": 7,
+    "snapshots": 54,
+    "chunks": 52,
+    "manifests": 2,
+    "columns": 54,
+    "primaryKeys": 9,
+    "indexes": 9,
+    "triggers": 2,
+    "function": 1
+  },
+  "migrations": [
+    {
+      "id": "0000_gorgeous_the_executioner.sql",
+      "sha256": "fb2d9661657b954201adb7a6c7d6798b1c860a9f427f82b4cb8dddeee96eb6bf",
+      "applied_at": "2026-10-07T21:05:59.743Z"
+    },
+    {
+      "id": "0001_loud_monster_badoon.sql",
+      "sha256": "32c8c1e5945d2a2e7b9a43469710f83e7a767d573680340b711abc16fb52044a",
+      "applied_at": "2026-10-07T21:05:59.743Z"
+    },
+    {
+      "id": "0002_flashy_nico_minoru.sql",
+      "sha256": "2c72a9a3cf03675856ae96d8a0a37ec12023d84c09f7775dbb525181d9978552",
+      "applied_at": "2026-10-07T21:05:59.743Z"
+    },
+    {
+      "id": "0003_wide_exodus.sql",
+      "sha256": "c1b8ccde321efbf92c2c4baaaa6abae6212b546474aade69541d0b5e821fc706",
+      "applied_at": "2026-10-07T21:05:59.743Z"
+    },
+    {
+      "id": "0004_wonderful_warlock.sql",
+      "sha256": "541123a96038c7ca77cbeccd43c1d46d6bac0b6aacf9a65d3ffa0a9f3e601f57",
+      "applied_at": "2026-10-07T21:05:59.743Z"
+    },
+    {
+      "id": "0005_snapshot_immutability.sql",
+      "sha256": "1163d1f86f205aad01d813d4d7e962a573551cbad9aa09f820e1f458b7b36b8e",
+      "applied_at": "2026-10-07T21:05:59.743Z"
+    }
+  ],
+  "evidence": {
+    "directory": "/var/lib/vps/al-rifai/evidence",
+    "files": {
+      "accounts-snapshot.json": {
+        "bytes": 6000862,
+        "sha256": "e8bb01f520f035362acd1284419e6929ec02547edaef1b0ebcfcf2c0a914e5c2"
+      },
+      "chat-archive.json": {
+        "bytes": 1878416,
+        "sha256": "9f2ba5c0e881e19bb1a7df50ac86c25fc479550dc707bc0737b20c22a46ec872"
+      },
+      "conversation-snapshot.json": {
+        "bytes": 9428183,
+        "sha256": "63cd86a078268046deb2ce0e3186dba7ebda0cf323ed7e5e7e58df6f2fb0d8d4"
+      },
+      "operations.json": {
+        "bytes": 3804967,
+        "sha256": "e41b24393a6822c74e9f8f87dca538e9dc0e2f38c93c1e8791907d805d6a8547"
+      },
+      "seed-source.ts": {
+        "bytes": 1138,
+        "sha256": "1e6e1566e6c2baf4f2b0bd2d0bd1a4e05d33ab90400ee374ef5c7f27071bdc52"
+      },
+      "recovered-programs.json": {
+        "bytes": 2731,
+        "sha256": "5b1761598fe4619ab416b6ead7c3502b8670a8eda9fd103ce6a55b40fde3bf86"
+      }
+    }
+  },
+  "upstreamSourceSHA256": {
+    "/opt/vps/apps/al-rifai/scripts/verify-state.mjs": "5dfc42f98952d3bc67267370ab868a2c7a6a6063d9dbda1c114974eaf8c394e5",
+    "/opt/vps/apps/al-rifai/scripts/database.mjs": "203acfb30aa2d70ee522074f7eceb038f3aa1a57c09dd42fb1b4738f897ae481",
+    "/opt/vps/apps/al-rifai/db/migrations/0000_gorgeous_the_executioner.sql": "fb2d9661657b954201adb7a6c7d6798b1c860a9f427f82b4cb8dddeee96eb6bf",
+    "/opt/vps/apps/al-rifai/db/migrations/0001_loud_monster_badoon.sql": "32c8c1e5945d2a2e7b9a43469710f83e7a767d573680340b711abc16fb52044a",
+    "/opt/vps/apps/al-rifai/db/migrations/0002_flashy_nico_minoru.sql": "2c72a9a3cf03675856ae96d8a0a37ec12023d84c09f7775dbb525181d9978552",
+    "/opt/vps/apps/al-rifai/db/migrations/0003_wide_exodus.sql": "c1b8ccde321efbf92c2c4baaaa6abae6212b546474aade69541d0b5e821fc706",
+    "/opt/vps/apps/al-rifai/db/migrations/0004_wonderful_warlock.sql": "541123a96038c7ca77cbeccd43c1d46d6bac0b6aacf9a65d3ffa0a9f3e601f57",
+    "/opt/vps/apps/al-rifai/db/migrations/0005_snapshot_immutability.sql": "1163d1f86f205aad01d813d4d7e962a573551cbad9aa09f820e1f458b7b36b8e",
+    "/opt/vps/apps/al-rifai/docs/evidence-checksums.json": "bc4e8f6efc5d3146d285c54842aa2a5318c969dcb9cbe7b682aca28710e35b22"
+  },
+  "security": {
+    "liveExecutionEnabled": false,
+    "administrativeRole": "vps_pg_admin",
+    "roleRemainsWriteCapable": true,
+    "dedicatedRoleCreated": false,
+    "ACLOverlayAllowed": false
+  }
+}

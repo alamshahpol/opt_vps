@@ -1,0 +1,462 @@
+# AL-RIFA'I Development and Production Safety
+
+**Project:** `/opt/vps/apps/al-rifai`
+**App configuration:** `/etc/vps/apps/al-rifai/app.env`
+**PostgreSQL container:** `vps-infra-postgres-1`
+**Database:** `alrifai`
+**App container:** `al-rifai-app-1`
+**Runtime (inside container):** Node.js 22.23.3 (verified from `al-rifai-app-1` at 2026-10-21 07:05 CEST)
+**Package manager (build stage):** pnpm (pinned via `package.json` `packageManager` field)
+
+---
+
+## 0. Current Production Position (verified 2026-10-27)
+
+This section is the current authority for agent behaviour. Later sections remain
+valid safety policy; where an older section contradicts this one, this section
+wins.
+
+### 0.1 Architecture
+- One application (`/opt/vps/apps/al-rifai`), one PostgreSQL database (`alrifai`),
+  one app container (`al-rifai-app-1`) running the pinned image in `compose.yaml`.
+- WA-01 / Bridge-1 is the authorized WhatsApp source for Cash and Vessel. Its
+  verified paired account is the WhatsApp Admin identity. WA-02 is identity-only;
+  never call its message/contact tools.
+- Bridge SQLite (`/runtime/store/messages.db`) is transport evidence; the
+  PostgreSQL mirror (`whatsapp_messages_original`) is the application source.
+
+### 0.2 Verified data (2026-10-27)
+- Cash Current: 1,819 instructions / BDT 939,889.00, 0 postings, all REVIEW.
+  Cash Archive: 1,610 instructions / 1,586 postings (legacy epoch).
+- Vessel Current: 377 register rows (206 DRAFT / 171 REVIEW), 64 confirmed
+  programs, 64 assignments. Archive: 608 register rows, 5 draft programs.
+- 64 REVIEW rows are confirmed-linked evidence; 107 are actionable review.
+- 16 programs have unresolved Employee Master links (no safe match exists).
+
+### 0.2.1 Verified production defects and pending verification (2026-10-27)
+- **Cash UI blocked:** `/api/cash/summary` requires `ALRIFAI_CASH_SUPER_ADMIN_IDS`
+  to contain the logged-in portal user id. The variable is **not present** in the
+  container environment, `compose.yaml` or `app.env`, so the ADMIN portal user
+  receives `SUPER_ADMIN_REQUIRED` (403) and the Cash page shows no rows. Do not
+  "fix" this by changing permissions or business data; the exact configuration
+  correction needs Owner authorization.
+- **Vessel freshness:** the newest confirmed program has `startDate` 2026-10-10
+  (16 programs in October, none later). The register UI also hardcodes
+  "Updated conversations through 06 Oct 2026" and derives its source label from
+  the evidence-snapshot date. Register activity after 2026-10-10 exists as
+  DRAFT/REVIEW rows in Escort intake, not as confirmed programs.
+- **GitHub:** SSH authentication as `arshiyaazim` and the first-push dry run
+  succeeded, but the remote `arshiyaazim/opt_vps` currently has **0 refs**; no
+  push has occurred. Local work is uncommitted (VPS repo 9 entries, app repo
+  115). Do not commit, push or change remotes without Owner authorization.
+
+### 0.3 Business rules that must not be re-litigated
+- Only the three authorized Escort Clients originate Vessel Orders; only the
+  verified Admin → verified Accountant direct chat qualifies for Cash.
+- The actual outgoing Admin WhatsApp message in the same client conversation is
+  the Vessel confirmation. One program per Lighter.
+- `MV`/`M.V.` prefixes are generic; spelling variants are matched by
+  conversation + vessel context + Master Mobile + chronology, never by name
+  alone. Never pad/truncate/fabricate a phone number.
+- Escort Mobile is the Employee ID reference; `payout_mobile` is a payment
+  destination and never creates or identifies an employee.
+- Current vs Archive is separated by `dataset_epoch` / `dataset_scope`. Do not
+  clear tables, mix Archive into Current, or rewrite statuses for display.
+
+### 0.4 Prohibited without exact Owner authorization
+- Production migrations or business-data writes; write-mode backfills;
+  reprocessing the historical corpus; deployment/image release; app or Bridge
+  restart; Live Sync activation; WA-02 permission changes; Cash posting,
+  approval or settlement; WhatsApp sends; re-pairing; cursor resets; table
+  clears; employee merges; scope expansion.
+
+### 0.5 Mandatory before any production write
+1. Identify the exact rows and source evidence. 2. Verify a usable backup.
+3. Run a read-only dry run. 4. Confirm idempotency. 5. Confirm no Archive or
+canonical row is silently overwritten. 6. Confirm no financial posting or
+auto-confirmation.
+
+### 0.6 Verification state
+- Authenticated Owner UI and a new authorized-message end-to-end pass are NOT
+  VERIFIED. Do not claim them without real evidence.
+- Review age (presentation-only, source timestamps): 95 recent / 12 legacy /
+  0 date-unknown among 107 actionable rows; 16 unresolved employee links
+  (14 recent / 2 legacy).
+- Repositories: VPS `https://github.com/arshiyaazim/opt_vps.git` (HEAD 39ce58f);
+  `apps/al-rifai` is a nested repo with the same remote (HEAD 6b9b18d). The
+  deployed image was built from the uncommitted working tree, so image-to-commit
+  traceability is NOT VERIFIED. Do not commit/push/change remotes without Owner
+  authorization.
+- Deployed image: `sha256:07063c640bdf4b4d0267405ef5fb63946a81718b9ca61aa747a30b99e391eddc`,
+  built from the working tree (no commit-level traceability).
+- Authenticated Owner Cash UI recovery and Vessel 2026-10-11..27 end-to-end
+  completion remain **NOT VERIFIED**; the Cash UI is additionally blocked by the
+  missing super-admin allowlist (§0.2.1).
+- Reference documents: `docs/VESSEL-WORKFLOW.md` (business rules),
+  `NEXT-SESSION-HANDOFF.md` (state), `docs/VPS_MAP.md` (infrastructure).
+
+---
+
+## 1. Cash Domain Development Unfreeze and Owner Boundaries
+
+The Owner has removed the previous Cash development freeze for the explicitly
+authorized Cash, WhatsApp, Message Mirror, Vessel, and UI integration work.
+This permits source and isolated-test changes; it does **not** remove business
+security controls or authorize production actions.
+
+Preserve the verified Admin-to-designated-Accountant eligibility, separate
+employee identity from payout numbers, source/sender/recipient verification,
+authentication, roles, approval/review controls, duplicate protection, and
+original source evidence. Route uncertain identities or intent to review.
+Do not automatically approve or post financial transactions. Do not change
+legacy records or reconcile the Mirror against legacy business data.
+
+Production PostgreSQL migrations or writes, deployment/image release, service
+or Bridge restart, Live Sync activation, historical backfill/reprocessing,
+WA-02 permission changes, and financial posting/approval/settlement remain
+prohibited unless the Owner separately authorizes the exact production action.
+WA-02 remains identity-only by policy; never call its message/contact tools
+from an integration worker. WA-01 now exposes only
+`get_native_account_identity`, `list_native_events`, `list_native_messages` and
+`get_contact`; WA-02 still exposes identity plus broader legacy message/contact
+tools, which is a blocker to report — not authority to use or expand them.
+
+The current path-specific development authorization covers the paths listed
+in the Owner's “Cash Unfreeze & WhatsApp Integration Recovery” and
+“Documentation Synchronization” instructions. Do not extend edits to
+additional protected paths without a new exact-path Owner authorization.
+Never read or print credentials or secret-file contents. Do not send WhatsApp
+messages or create credentials.
+
+The advisory path guard is at `apps/al-rifai/scripts/cash-freeze-guard.mjs`.
+It is not an approval authority, a production gate, or a substitute for
+repository review, CODEOWNERS, branch protection, or production approval.
+Preserve approved work and report exact changed paths and validation evidence.
+
+---
+
+## 2. Runtime Reality — Host vs Container
+
+**The host shell is not the AL-RIFA'I app runtime.** The canonical runtime is the Docker app container `al-rifai-app-1`. Do not assume host shell binaries are authoritative.
+
+### 2.1 Host executables (verified)
+| Tool | Status | Path / Version |
+|---|---|---|
+| Node.js | **not installed on host** | — |
+| npm | **not installed on host** | — |
+| pnpm | **not installed on host** | — |
+| npx | **not installed on host** | — |
+| Corepack | **not installed on host** | — |
+| Python 3 | installed | `/usr/bin/python3` (3.10.12) |
+| pip / uv / pytest | not installed | — |
+| Docker | installed | `/usr/bin/docker` (v29.8.2) |
+| Docker Compose | installed | `/usr/bin/docker compose` (v5.6.0) |
+| psql | not installed on host | use via `docker exec` |
+
+### 2.2 Container runtimes (verified)
+- **App container `al-rifai-app-1`:** Node 22.23.3 (verified 2026-10-21), built from `node:22.23.3-bookworm`.
+- **Build stage:** uses pinned `pnpm` with `--frozen-lockfile`. **Production runtime image does not contain pnpm or python3.** Do not treat the running container as a build/test environment.
+- **PostgreSQL container `vps-infra-postgres-1`:** `postgres:16-alpine`.
+- **WhatsApp bridges:** `vps-whatsapp-wa-01-cap4-20261011` (UID 10002) runs
+  `local/vps-whatsapp:20261027-native-writer`; `vps-whatsapp-wa-02-cap4-20261011`
+  (UID 10003) runs `local/vps-whatsapp:20261020-ingestion`.
+
+### 2.3 Python
+- AL-RIFA'I app runtime does **not** use Python.
+- Host Python exists for VPS tooling only; there is no project venv.
+
+---
+
+## 3. Canonical Paths
+
+| Purpose | Path |
+|---|---|
+| Project root | `/opt/vps/apps/al-rifai` |
+| App env file | `/etc/vps/apps/al-rifai/app.env` |
+| DB password file (mounted secret, never printed) | `/etc/vps/apps/al-rifai/database_password` |
+| WA-01 control dir | `/var/lib/vps/whatsapp/wa-01/control` (mode `0710`, owner `10002:10002`) |
+| WA-02 control dir | `/var/lib/vps/whatsapp/wa-02/control` (mode `0710`, owner `10003:10003`) |
+| WA-01 / WA-02 MCP socket | `<control>/mcp.sock` (mode `0660`, group-owned by bridge GID) |
+| Runtime evidence dir | `/var/lib/vps/al-rifai/evidence` |
+
+**Permission model:** App container runs as UID `10001` with supplementary groups `10002,10003`. Control directories use mode `0710` so the app can traverse to the socket without listing the directory. **Do not weaken these permissions** (no `0777`, no public read on `store`/`outbox`/`control`).
+
+**Current control mounts:** `apps/al-rifai/compose.yaml` mounts both control
+directories with `read_only: false` so the app can use the existing Unix
+sockets. This was an Owner-authorized, path-limited deployment exception.
+The host directories remain `0710`; socket files were observed as `0660`.
+Do not generalize this exception to other paths or services.
+
+---
+
+## 4. PostgreSQL
+
+- **Container:** `vps-infra-postgres-1`
+- **Database:** `alrifai` (hardcoded in `db/postgres.mjs`; `PGDATABASE` is not read)
+- **Role:** `alrifai_app` (default in code)
+- **Port:** `5432` (hardcoded in code)
+- **Credentials:** supplied via mounted secret file (`PGPASSWORD_FILE`), never echoed into logs or docs.
+- **Connection strategy:** existing Docker network + mounted secret. Do **not** create new DB users or change credentials.
+
+### Environment variable NAMES (never print or copy values)
+Present in `app.env` / compose:
+- `ALRIFAI_EVIDENCE_DIR`, `ALRIFAI_REVIEW_PROFILE`,
+  `ALRIFAI_VALIDATION_PASSWORD_FILE`, `ALRIFAI_REVIEW_PASSWORD_FILE`,
+  `ALRIFAI_NATIVE_MANIFEST_FILE`, `NODE_ENV`, `PGHOST`, `PGPASSWORD_FILE`,
+  `PGSCHEMA`
+- Cash: `ALRIFAI_CASH_OWNER_PERSON_REF`, `ALRIFAI_CASH_OWNER_BINDING_REF`,
+  `ALRIFAI_CASH_ORIGIN`, `ALRIFAI_LIVE_CASH_SYNC`,
+  `ALRIFAI_LIVE_CASH_INTENT_CAPTURE`
+- Vessel: `ALRIFAI_VESSEL_PROCESSING_ENABLED`
+- Mirror: `ALRIFAI_MESSAGE_MIRROR_ENABLED`, `ALRIFAI_MESSAGE_MIRROR_MODE`,
+  `ALRIFAI_MIRROR_WORKER_PASSWORD_FILE`
+- WhatsApp: `WHATSAPP_WA01_MCP_SOCKET`, `WHATSAPP_WA01_READER_TOKEN_FILE`,
+  `WHATSAPP_WA02_MCP_SOCKET`, `WHATSAPP_WA02_READER_TOKEN_FILE`
+- **Expected but absent (verified 2026-10-27):** `ALRIFAI_CASH_SUPER_ADMIN_IDS`
+  — its absence blocks the Cash summary API (see §0.2.1).
+
+> `PGPORT`, `PGDATABASE`, and `PGUSER` are not read from `app.env`: port `5432`, database `alrifai`, and the default role `alrifai_app` are defined in code. `PGHOST` may override the default host. Do not copy plaintext credentials into AGENTS.md or logs.
+
+### Compose precedence
+`compose.yaml` → `env_file` (`/etc/vps/apps/al-rifai/app.env`) → explicit `environment:` overrides → bind-mounted secret files. The app relies on **file-backed secret mounts**, not workspace `.env` values in tracked source.
+
+---
+
+## 5. API Endpoints (AL-RIFA'I App)
+
+Route inventory from `app/api/**/route.ts` and `app/candidate-api/[...path]/route.ts`:
+
+| Path | Methods | Notes |
+|---|---|---|
+| `/api/health` | `GET` | Database-backed health check. |
+| `/api/register` | `GET` | Private register read. |
+| `/api/vessels` | `GET` | Private vessel register read. |
+| `/api/program-tools` | `GET` | Private program workflow read. |
+| `/api/escort-register` | `GET` | Private escort register read. |
+| `/api/conversations` | `GET` | Private conversation/archive read. |
+| `/api/import-audit` | `GET` | Private import evidence read. |
+| `/api/core` | `GET` | Private integration connection state. |
+| `/api/operations` | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` | Non-GET handlers are present but return method-not-allowed. |
+| `/api/assistant` | `POST` | Private read-only question endpoint. |
+| `/api/cash/[...path]` | `GET`, `POST`, `PATCH` | Dynamic Cash route; endpoint inventory only. Cash source development is unfrozen within the Owner-authorized scope; production financial controls remain in force. |
+| `/candidate-api/[...path]` | `GET`, `POST`, `PATCH`, `PUT`, `DELETE` | Dynamic candidate API host route. |
+
+Do not probe write endpoints during audits. This table describes registered route handlers, not authorization outcomes or business behavior.
+
+---
+
+## 6. Safe Commands for Agents
+
+### 6.1 Application tests (isolated, non-production)
+```bash
+# Run only in an authorized isolated Node.js 22 environment, never in production.
+# package.json pins pnpm@11.25.0; install from the committed lockfile:
+cd /opt/vps/apps/al-rifai
+pnpm install --frozen-lockfile
+pnpm test
+```
+
+The project requires Node.js `>=22.13.0`. Use the pnpm version pinned in
+`package.json`; do not use npm/npx or the production container for tests.
+
+### 6.2 Typecheck, lint, build
+```bash
+# Use the same authorized isolated Node.js 22 environment and installed dependencies:
+cd /opt/vps/apps/al-rifai
+pnpm typecheck
+pnpm lint
+pnpm build
+```
+
+Do not build or redeploy production images unless separately authorized.
+
+### 6.3 Read-only health & inventory
+```bash
+# App health (local, non-mutating):
+curl -fsS http://127.0.0.1:3000/api/health
+
+# App DB verification (bounded, read-only):
+docker exec -i vps-infra-postgres-1 psql -U alrifai_app -d alrifai -At \
+  -c "SELECT count(*) FROM public.whatsapp_messages_original;"
+
+# Container status:
+docker ps --format '{{.Names}}\t{{.Status}}' \
+  | grep -E 'al-rifai-app|wa-01|wa-02|postgres'
+
+# WhatsApp control dir inspection (read-only):
+ls -l /var/lib/vps/whatsapp/wa-01/control
+ls -l /var/lib/vps/whatsapp/wa-02/control
+```
+
+### 6.4 WhatsApp bridge checks (read-only only)
+- Inspect mounted control sockets and container health only.
+- Do **not** restart, re-pair, reset, or wipe sessions.
+- Do **not** overwrite credentials.
+- Bridge health probe (via `docker exec`, uses mounted reader token — token value never printed):
+  ```bash
+  docker exec vps-whatsapp-wa-01-cap4-20261011 sh -c \
+    'wget -qO- --timeout=5 http://127.0.0.1:8080/api/health'
+  ```
+
+---
+
+## 7. Production Safety Restrictions
+
+### 7.1 Absolute prohibitions (no exceptions, even with Owner authorization)
+- Do not use `nsenter`, `strace`, `gdb`, or any host-level namespace/process
+  attachment tool to enter a container's network, PID, or mount namespace.
+- Do not `cat`, `head`, `tail`, `less`, or otherwise read the **contents** of
+  any file under `/etc/vps/apps/al-rifai/auth/`,
+  `/etc/vps/services/whatsapp/*.token`, or any `*_PASSWORD_FILE` /
+  `*_TOKEN_FILE` path. Use `test -r <file>` to verify existence and
+  readability only.
+- Do not print, echo, log, or include any secret value (token, password,
+  private key) in chat output, tool output, or documentation.
+
+### 7.2 Prohibited without explicit Owner authorization
+- Restart or redeploy of app or WhatsApp bridges
+- Migration, reset, or schema change of PostgreSQL
+- Payment posting or approval changes
+- WhatsApp pairing reset, session wipe, or credential overwrite
+- Production business-data writes
+- Synthetic business-data creation
+- Permission changes on `/var/lib/vps/whatsapp/wa-0X/{store,outbox,control}`
+  beyond the documented `0710` traverse model
+- Removal of any running container without verified ownership
+
+### 7.3 Bridge health check — approved method only
+- Use `docker exec <container> sh -c 'wget -qO- --timeout=5 http://127.0.0.1:8080/api/health'`
+  as shown in Section 6.4.
+- If the bridge container lacks an HTTP client, **report the limitation** —
+  do not work around it with `nsenter` or host-network access.
+
+---
+
+## 8. Docker Inventory (observed 2026-10-21; re-verified 2026-10-27)
+
+**14 containers running** on the VPS (re-verified 2026-10-27): 4 Compose-managed
+and 10 GitHub MCP tooling containers. Container names below remain the
+2026-10-21 observation and were not individually re-verified; the count is
+current. The inventory is an observation, not a permanent count.
+
+### Managed by Compose (4)
+| Container | Project | Compose file |
+|---|---|---|
+| `al-rifai-app-1` | `al-rifai` | `apps/al-rifai/compose.yaml` |
+| `vps-infra-postgres-1` | `vps-infra` | `infra/compose.yaml` |
+| `vps-whatsapp-wa-01-cap4-20261011` | `vps-whatsapp-cap4-wa01` (runtime label) | `services/whatsapp/compose.yaml` (declared name: `vps-whatsapp-privacy`) |
+| `vps-whatsapp-wa-02-cap4-20261011` | `vps-whatsapp-cap4-wa01` (runtime label) | same |
+
+> The WhatsApp Compose file declares `name: vps-whatsapp-privacy`, but containers run under project `vps-whatsapp-cap4-wa01` due to a `-p` override at deploy time. This is intentional; do not reconcile without Owner review.
+
+### Unmanaged tooling containers (10)
+Ten containers running `ghcr.io/github/github-mcp-server:0.29.0` were observed:
+`awesome_mccarthy`, `unruffled_kepler`, `stoic_wilbur`, `dazzling_shockley`,
+`strange_banach`, `loving_payne`, `wizardly_einstein`, `elegant_jang`,
+`elated_ellis`, and `youthful_nightingale`. Host process inspection observed
+owner `root`, process name `github-mcp-serv`, and parent process
+`containerd-shim` for each. Raw process arguments were not collected. No
+container was stopped, removed, or changed during that inspection.
+
+**Do not remove these containers without Owner authorization**, even though they are unmanaged.
+
+---
+
+## 9. Troubleshooting Guide
+
+| Symptom | First action |
+|---|---|
+| `node`/`npm` missing on host | Use the Dockerized app runtime or the ephemeral `node:22.23.3-bookworm` container. Do not install Node on the host. |
+| App dependencies missing in a validation env | Use the checked-in lockfile; run `pnpm install --frozen-lockfile` in the authorized isolated env only. Never install into production. |
+| Mounted file missing | Check `/etc/vps/apps/al-rifai/` and the Compose bind-mount targets before assuming a code defect. |
+| DB access fails | Verify container is healthy (`docker ps`), check secret file path, then run bounded read-only SQL against `alrifai`. |
+| App cannot reach bridge socket | Confirm control dir mode is `0710` and owned by bridge UID; confirm app UID 10001 has supplementary group matching bridge GID (10002 or 10003); confirm socket exists and mode is `0660`. **Do not `chmod 777` or widen permissions.** |
+| Bridge log shows disconnect/reconnect | This is observable in logs but is **not** sufficient grounds to restart. Document and escalate to Owner. |
+
+---
+
+## 10. Agent Readiness Checklist
+
+Before any action, an agent must confirm:
+- [ ] The action is **read-only**, **or** it has explicit Owner authorization.
+- [ ] Any protected-path edit is within the Owner's exact authorized paths.
+- [ ] Cash identity, source, permission, review, and financial controls remain intact.
+- [ ] The action does not restart, re-pair, or reconfigure any container.
+- [ ] Secrets are not read into logs, chat, or documentation.
+- [ ] If a tool/binary is missing on host, the Dockerized runtime is used instead.
+- [ ] Permission model on WhatsApp control dirs (`0710` + `0660` socket) is preserved.
+- [ ] Any discovered discrepancy (container count, Compose labels, env mismatch) is **reported**, not auto-fixed.
+
+**When in doubt: stop, document, request Owner authorization.**
+## 11. Control Directory Permission Persistence
+
+### P1: systemd-tmpfiles (ACTIVE — installed Session 3)
+Config: /etc/tmpfiles.d/vps-whatsapp-control.conf
+Contents:
+    d /var/lib/vps/whatsapp/wa-01/control 0710 10002 10002 -
+    d /var/lib/vps/whatsapp/wa-02/control 0710 10003 10003 -
+Apply manually: sudo systemd-tmpfiles --create
+Runs automatically on boot via systemd-tmpfiles-setup.service.
+After any bridge recreate, run:
+    sudo systemd-tmpfiles --create /etc/tmpfiles.d/vps-whatsapp-control.conf
+
+### P2: Bridge Entrypoint (BACKUP — not yet applied)
+If P1 fails after reboot, add to
+/opt/vps/services/whatsapp/source/service-entrypoint.sh:
+    chmod 0710 /runtime/control 2>/dev/null || true
+Then rebuild image and recreate bridges.
+
+## 12. Al-Rifa'i live workflow and evidence rules
+
+- The existing application at `/opt/vps/apps/al-rifai` and its single
+  PostgreSQL database `alrifai` are the implementation target. Do not create
+  a replacement app or database.
+- **History (2026-10-25):** the Owner's Message Mirror direction identified
+  WA-01 and WA-02 as intended sources and required WA-03 support; at that time
+  the running artifact lacked the Mirror worker, migration 0025 was not applied,
+  no activation cursor existed, the `whatsapp_mirror` schema was absent, and
+  WA-01 exposed only stored/archive MCP tools. Keep this as dated history; it no
+  longer describes the running system.
+- **Current (2026-10-27):** migration 0025 is applied and ledgered (30 ledger
+  rows) and the `whatsapp_mirror` schema exists. The Mirror worker is present in
+  the image but **disabled** (`ALRIFAI_MESSAGE_MIRROR_ENABLED=0`,
+  `ALRIFAI_MESSAGE_MIRROR_MODE=EVIDENCE_ONLY`). Live ingestion uses the WA-01
+  native reader: 9/9 approved-scope cursors in `whatsapp_native_sync_state` and
+  2/2 Cash channels in `cash_live_sync_channels`.
+- **WA-01 tools (2026-10-27):** `get_native_account_identity`,
+  `list_native_events`, `list_native_messages`, `get_contact`. WA-02 still
+  exposes identity plus legacy message/contact tools; never call them from an
+  integration worker and do not infer grants from a runtime tool list.
+- **Bridge health probe:** still returns exit code 6 although `wget` exists in
+  both containers. This is a known limitation; do not change permissions or use
+  `nsenter`/host networking to work around it.
+- Cash development is unfrozen only within the Owner-authorized scope.
+  Preserve original source evidence; never automatically delete business
+  records, approve uncertain cases, post Cash, replay historical ingestion,
+  or backfill.
+- A healthy app, database, or bridge does not establish successful
+  end-to-end business processing. Perform a bounded, read-only, function-by-
+  function audit before changing live ingestion; do not infer workflow
+  success from health, counts, source code, or a prior Agent summary.
+- Start from `NEXT-SESSION-HANDOFF.md` and its dated Current Production
+  Position / issue register. Preserve prior evidence and dirty worktree state;
+  record new observations with their timestamp and source rather than
+  replacing older results.
+- Report findings by business function: WhatsApp Receive, Native Message
+  Persistence, PostgreSQL Mirroring, identity validation, Escort parsing and
+  duplicate detection, Accounts parsing, Review queue, Register/Accounts
+  visibility, recovery, source traceability, and end-to-end completion.
+- Do not claim historical reconciliation is complete without source-level
+  evidence. Historical TXT/Excel ranking, import, deduplication, correction,
+  backfill, and archive-wide reprocessing require separate Owner instructions.
+- Never read message bodies or Cash business rows during metadata-only
+  audits. If a requested conclusion requires content, credentials, writes, or
+  scope expansion, mark it NOT VERIFIED and request the required authorization.
+
+### Current Blockers Reference
+
+See `NEXT-SESSION-HANDOFF.md`, **FINAL OPERATIONAL HANDOFF — 2026-10-27**, for
+the current production snapshot, VERIFIED / IMPLEMENTED BUT NOT VERIFIED /
+NEEDS REVIEW / BLOCKED status, review-age counts and safe next steps. The
+2026-10-24 and 2026-10-25 sections remain historical evidence and are superseded
+by the 2026-10-27 section and by §0 of this file.

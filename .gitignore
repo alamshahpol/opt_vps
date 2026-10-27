@@ -1,0 +1,82 @@
+# AL-RIFA'I VPS — publishable source only.
+# Runtime data, credentials and private archives stay on the VPS.
+
+# ---------------------------------------------------------------------------
+# Secrets and credentials
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!**/.env.example
+.dev.vars*
+*.token
+*.key
+*.pem
+*.p12
+*.pfx
+*.secret
+*.kdbx
+/auth/
+database_password
+*_PASSWORD_FILE
+*_TOKEN_FILE
+
+# ---------------------------------------------------------------------------
+# Runtime data, private archives and backups
+# ---------------------------------------------------------------------------
+import/
+staging/
+backups/
+*.dump
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.pid
+*.sock
+/var/
+
+# WhatsApp session / pairing / message stores
+services/whatsapp/source/whatsapp-bridge/store/
+services/whatsapp/qualification/
+
+# Qualification evidence and vendored dependency trees
+apps/al-rifai/qualification/
+apps/al-rifai/data/*
+!apps/al-rifai/data/conversation-policy.json
+apps/al-rifai/evidence/
+apps/al-rifai/legacy-reference/*.zip
+
+# ---------------------------------------------------------------------------
+# Build output, caches and generated artifacts
+# ---------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.next/
+dist/
+out/
+coverage/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.tsbuildinfo
+.lint-results.json
+next-env.d.ts
+*.zip
+*.tar
+*.tar.gz
+
+# ---------------------------------------------------------------------------
+# OS / editor noise
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.kilo/
