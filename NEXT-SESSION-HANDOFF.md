@@ -1,12 +1,50 @@
 # Next-Session Handoff — Updated After Session 3
 
+## UI VISIBILITY REPAIR — 2026-10-27 (deployed)
+
+Root cause: the workspace routes existed in the image but the private-entry proxy
+allowlists and legacy sidebars never exposed them (`/dashboard` etc. returned
+404; `/vessel-register` was reachable only via the `/vessel` prefix accident).
+
+Fix (`a157f58`):
+- new `release/entry-rules.mjs` — boundary-exact allowlists (exact path or
+  `/path/…`, subtree only for explicit `/api/.../`, `/_next/`, asset prefixes;
+  traversal/`//` rejected). Both hosts now allow the nine workspace routes;
+  Cash host additionally allows `/api/operations`, `/api/assistant`,
+  `/api/vessel-programs`, `/api/health`. Cash host keeps its restricted API set.
+- `release/private-entry.mjs` uses the tested rules; no auth change.
+- Cash and Vessel legacy sidebars gained a visible “PLATFORM WORKSPACE” group
+  linking Dashboard, Vessel Register, Transactions, Employees, Sources & Review,
+  Insights, Income & Expenditure, Archive, Assistant; all legacy items kept.
+- Dockerfile ships `entry-rules.mjs`; 5 new allowlist tests (129 total).
+
+Deployed image: `sha256:5f3e2aad0916f66f99c7af13339929ba8e0e041ef904de957c5d2f64244f3b06`
+(tag `local/al-rifai:owner-approved-20261027-ui-repair`, revision `a157f58`),
+app service only, healthy, workers running. Previous image `34ce3060…` and
+compose backup `/var/backups/vps/al-rifai-compose-pre-uirepair-20261027T211142Z.yaml`
+retained for rollback.
+
+External route verification (post-deploy):
+- Cash host: workspace routes 401 (auth) instead of 404; `/cash`,
+  `/cash/archive`, `/cash/submissions` 200; `/vessel` 401; `/api/unknown`,
+  `/candidate-api/*`, `/vesselx`, `/cashier`, `/dashboard-evil` 404.
+- Main host: workspace routes 401; `/review`, `/vessel`, `/register` 401;
+  `/cash` 404 (unchanged boundary).
+- Served Cash bundle contains “PLATFORM WORKSPACE” and the workspace labels.
+- **Authenticated browser-rendered verification is PENDING** — no Owner
+  credentials were available to the agent; the Owner should load
+  `https://alrifai.iamazim.com/cash`, sign in, and confirm the new group, then
+  visit `/dashboard` with the existing validation credential.
+
+---
+
 ## FINAL SYSTEM STATE — 2026-10-27 (safe stop, Owner break)
 
 **Start here next session.**
 
 | Item | Value |
 |---|---|
-| Production image | `sha256:34ce306018641a4c074d07c67acfd6e9800197764904ae4a7862615f43e6b3a5` |
+| Production image | `sha256:5f3e2aad0916f66f99c7af13339929ba8e0e041ef904de957c5d2f64244f3b06` (UI repair) |
 | Released source commit | `2881926` (packaging fix); compose pin committed |
 | Git HEAD / sync | `dc3b92b` (docs) · `origin/main` synchronized · working tree clean |
 | App health | healthy, 0 restarts; workers running ("Live Cash continuation started (review-only)") |
@@ -15,7 +53,7 @@
 | Cash Freeze | intact — 1,842 current-epoch instructions, **0 current postings**; posting env absent |
 | Database backup | `/var/backups/vps/alrifai-pre-0031-0032-20261027T203833Z.dump` (63.8 MB) · sha256 `e38086b30390426b756054b6900634fa250b30b667dd5ee37498245f433d10e0` (re-verified) |
 | Compose backup | `/var/backups/vps/al-rifai-compose-20261027T204929Z.yaml` |
-| Rollback image | `sha256:049627fa8eb3c95aaed45b0fa2ac29b97965ca74e8bf44b6541a696f687a3963` (present) |
+| Rollback image | `sha256:34ce3060…` (previous release) and `sha256:049627fa…` (pre-platform) both present |
 | Migrations 0031/0032 | **READY FOR OWNER APPROVAL — not applied** (hashes + commands in `docs/MIGRATION-READINESS-0031-0032.md`) |
 
 ### Rollback (application only)

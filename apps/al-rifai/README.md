@@ -13,7 +13,9 @@ application and database on 2026-10-27.
 `/api/escort-register`, `/api/register`, `/api/assistant`); every write action is
 disabled with its dependency explained. Legacy screens (`/cash`, `/vessel`,
 `/register`, `/conversations`, `/review`, `/message-mirror`, `/cash/archive`)
-remain unchanged and linked.
+remain unchanged and linked. Since the 2026-10-27 UI repair, both production
+hosts expose the workspace routes through boundary-exact allowlists, and the
+legacy Cash/Vessel sidebars include a “PLATFORM WORKSPACE” navigation group.
 
 New tested domain modules added in the same session:
 

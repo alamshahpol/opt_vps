@@ -12,6 +12,12 @@
 
 ## 0. Current Production Position (verified 2026-10-27)
 
+> **UI visibility repair — 2026-10-27:** commit `a157f58` exposes the workspace
+> routes through boundary-exact private-entry allowlists and adds the
+> “PLATFORM WORKSPACE” groups to the legacy Cash/Vessel sidebars. Deployed image
+> `sha256:5f3e2aad…` (app-only, healthy). Authenticated browser verification is
+> pending Owner login. Details in NEXT-SESSION-HANDOFF.md.
+>
 > **Release — 2026-10-27 (application-only, FINAL):** release commit `2881926`
 > deployed as image `sha256:34ce3060…` (candidate `d6f274…` superseded; first
 > attempt rolled back over a missing worker module, fixed and redeployed).
