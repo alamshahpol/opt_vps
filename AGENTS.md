@@ -12,8 +12,14 @@
 
 ## 0. Current Production Position (verified 2026-10-27)
 
-> **Implementation update — 2026-10-27 (session 3):** source `main` is at
-> `97de57c` (feature commits `6df2352`, `53b7ae3`). Added the Vessel command API (`/api/vessel-programs`) and
+> **Release — 2026-10-27 (application-only):** `main` `2881926` deployed as image
+> `sha256:34ce3060…` (candidate `d6f274…` superseded; first attempt rolled back
+> over a missing worker module, fixed and redeployed). Migrations 0031/0032
+> remain unapplied; Cash Freeze intact (0 current postings). Backups and
+> rollback image recorded in NEXT-SESSION-HANDOFF.md. Source pushed to origin.
+>
+> **Implementation update — 2026-10-27 (session 3):** source `main` at
+> `2881926` (feature commits `6df2352`, `53b7ae3`; release fix `2881926`). Added the Vessel command API (`/api/vessel-programs`) and
 > `/vessel-register` UI with server-resolved actor, revision/idempotency guards,
 > append-only audit and migration-dependency gating; 0032 revised + rehearsed.
 > Migration readiness pack: `apps/al-rifai/docs/MIGRATION-READINESS-0031-0032.md`.

@@ -1,5 +1,48 @@
 # Next-Session Handoff — Updated After Session 3
 
+## CONTROLLED RELEASE — 2026-10-27 (application-only, migrations NOT applied)
+
+- Source `main` at `2881926` (release fix); pushed fast-forward to
+  `origin/main` (`17e004d..2881926`). Working tree clean.
+- **Deployed image:** `sha256:34ce306018641a4c074d07c67acfd6e9800197764904ae4a7862615f43e6b3a5`
+  (tag `local/al-rifai:owner-approved-20261027-platform2`), built from
+  `2881926` with the approved BuildKit evidence mount, `--provenance=false`.
+- Dockerfile SHA-256: recorded in the release build log; image label
+  `org.opencontainers.image.revision=2881926…`.
+- First deployment attempt (`b51233af…`) exposed a packaging defect: the vessel
+  worker imports `lib/duplicate-identity.ts`, which the runtime COPY list
+  omitted. **Rolled back immediately** to `049627fa…`; fixed the Dockerfile
+  (`fix(build): ship duplicate classifier with the vessel worker runtime`),
+  rebuilt and redeployed. Workers verified: "Approved scope loaded: 9 chat
+  addresses across 7 conversations", "Live Cash continuation started
+  (review-only)", 0 restarts, healthy.
+- **Database:** backups taken before release:
+  `/var/backups/vps/alrifai-pre-0031-0032-20261027T203833Z.dump`
+  (63.8 MB, sha256 `e38086b30390426b756054b6900634fa250b30b667dd5ee37498245f433d10e0`),
+  archive readable (517 entries / 61 table-data items). Full restore into an
+  isolated PostgreSQL matched live counts (programs 84, escort rows 994,
+  employees 181, whatsapp originals 13,819). Migrations 0031 + 0032 rehearsed
+  against the restored clone: business-table counts unchanged
+  (`1586/3452/84/994`), submission→approval projection `ACTIVE_REVIEWED`,
+  append-only update blocked, vessel add idempotent replay verified.
+- **Migrations 0031/0032 remain NOT APPLIED** in production (30 ledger rows;
+  `cash_submissions` and command functions absent). The deployed app is designed
+  for this: `/cash/submissions` shows the dependency banner, `/vessel-register`
+  commands stay disabled, all reads work.
+- **Post-deploy checks:** `/api/health` ok; all platform/legacy routes return
+  expected auth status (401 unauth, Cash pages 200 login); current-epoch
+  instructions 1,842 with **0 postings** (Cash Freeze intact); WA-01/WA-02 and
+  PostgreSQL untouched; no evidence hashes or markers in the image (0/2,952
+  files matched evidence hashes).
+- **Rollback:** previous image `sha256:049627fa…` present; effective compose
+  backup `/var/backups/vps/alrifai-compose-20261027T204929Z.yaml`. Rollback
+  command: restore that file and `docker compose -p al-rifai up -d --no-deps app`.
+- **Next:** Owner approval to apply 0031/0032 (migration readiness pack) and to
+  set `ALRIFAI_VESSEL_COMMAND_ACTOR` if the Cash Owner ref is not the intended
+  actor; then the command API/queue activate automatically.
+
+---
+
 ## IMPLEMENTATION SESSION 3 — 2026-10-27 (Vessel command integration & migration readiness)
 
 ### Source state
