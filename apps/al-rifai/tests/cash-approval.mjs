@@ -26,7 +26,6 @@ test('role-scoped access: admins see all, users see only their own submissions',
 test('only an admin may decide and a reviewer cannot decide their own submission', () => {
   assert.throws(() => assertCanDecide({actor: USER, submission, decision: 'APPROVED'}), denied('ADMIN_REQUIRED'));
   assert.throws(() => assertCanDecide({actor: USER, submission, decision: 'APPROVED'}), denied('ADMIN_REQUIRED'));
-  const own = {id: USER.id, role: 'USER'};
   const selfAdmin = {id: USER.id, role: 'ADMIN'};
   assert.throws(() => assertCanDecide({actor: selfAdmin, submission, decision: 'APPROVED'}), denied('REVIEWER_IS_SUBMITTER'));
 });

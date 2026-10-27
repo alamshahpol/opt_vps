@@ -8,7 +8,6 @@ import {
   autoSuppressible,
   normalizeVesselName,
   normalizeReleasePoint,
-  mobileEvidence,
   normalizeShift,
   calendarDayDelta,
 } from '../lib/duplicate-identity.ts';
