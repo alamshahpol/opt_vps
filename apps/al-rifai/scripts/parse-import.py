@@ -1,17 +1,42 @@
 """Parse original files only; no identity authority, ledger or network access."""
 import sys,json,csv,io,base64,re,datetime,collections
 job=json.load(sys.stdin);blob=base64.b64decode(job['content']);name=job['name'].lower();rows=[]
+
+# WhatsApp exported text files appear in several locale/OS variants. Each pattern
+# captures (day, month, year, hour, minute, optional second, optional meridiem,
+# sender, text). Day/month order stays DD/MM; ambiguous exports are preserved as
+# evidence and never silently reinterpreted.
+TXT_PATTERNS=[
+ re.compile(r'^\[(\d{1,2})/(\d{1,2})/(\d{4}), (\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?\] ([^:]+): ?(.*)$'),
+ re.compile(r'^(\d{1,2})/(\d{1,2})/(\d{4}), (\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])? - ([^:]+): ?(.*)$'),
+]
+
+def parse_txt_header(line):
+ for pattern in TXT_PATTERNS:
+  m=pattern.match(line)
+  if not m:continue
+  day,month,year,hour,minute,second,meridiem,sender,text=m.groups()
+  hour=int(hour);minute=int(minute);second=int(second or 0)
+  if meridiem:
+   marker=meridiem.lower()
+   if hour==12:hour=0
+   if marker=='pm':hour+=12
+  try:
+   at=datetime.datetime(int(year),int(month),int(day),hour,minute,second,
+    tzinfo=datetime.timezone(datetime.timedelta(hours=6))).isoformat()
+  except ValueError:
+   at=None
+  return {'sourceTime':at,'senderLabel':sender.strip(),'text':text,'originalHeader':line}
+ return None
+
 if name.endswith('.txt'):
  messages=[]
  for line in blob.decode('utf-8-sig').splitlines():
-  m=re.match(r'^(\d{1,2})/(\d{1,2})/(\d{4}), (\d{1,2}):(\d{2}) - ([^:]+): ?(.*)$',line)
-  if m:
-   day,month,year,hour,minute,sender,text=m.groups()
-   try:at=datetime.datetime(int(year),int(month),int(day),int(hour),int(minute),tzinfo=datetime.timezone(datetime.timedelta(hours=6))).isoformat()
-   except ValueError:at=None
-   messages.append({'sourceTime':at,'senderLabel':sender,'text':text,'originalHeader':line})
+  parsed=parse_txt_header(line)
+  if parsed is not None:
+   messages.append(parsed)
   elif messages:messages[-1]['text']+='\n'+line
- if not messages:raise ValueError('No supported DD/MM/YYYY 24-hour messages found; original retained')
+ if not messages:raise ValueError('No supported WhatsApp text export found (bracketed/plain, 24-hour or AM/PM); original retained')
  occurrence=collections.Counter()
  for m in messages:
   anchor=str(m['sourceTime'])+'|'+m['senderLabel'];occurrence[anchor]+=1;m['externalId']=anchor+'|occurrence:'+str(occurrence[anchor]);rows.append(m)
