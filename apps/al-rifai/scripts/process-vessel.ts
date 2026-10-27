@@ -216,6 +216,8 @@ async function processBatch():Promise<number>{
             // WA-01) may act as the confirmation sender. Any other outgoing row
             // in a client chat is ignored instead of being treated as Admin.
             requireVerifiedAdmin:true,
+            // Disabled by default; Owner-enabled shadow evidence only.
+            duplicateShadow:process.env.ALRIFAI_DUPLICATE_CLASSIFIER==='SHADOW',
             isVerifiedAdmin:(candidate:{sender?:string;nativeSenderJid?:string;direction?:string})=>
               candidate.direction==="OUTGOING"
               &&(isCashScopeOwner(String(candidate.sender??""))||isCashScopeOwner(String(candidate.nativeSenderJid??""))),

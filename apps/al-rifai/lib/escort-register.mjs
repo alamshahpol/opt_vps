@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {parseEscortOrder} from './escort-intake-candidate.mjs';
 import {matchConfirmation} from './vessel-match.ts';
+import {classifyProgramDuplicate} from './duplicate-identity.ts';
 
 const hash=value=>createHash('sha256').update(typeof value==='string'?value:JSON.stringify(value)).digest('hex');
 const digits=value=>String(value??'').replace(/[০-৯]/g,c=>String('০১২৩৪৫৬৭৮৯'.indexOf(c)));
@@ -277,6 +278,24 @@ export function deriveEscortRegisterOps(account,messages,contacts,existingRows,a
    const duplicateCandidates=[...new Map(known.filter(row=>
      row.account_id===account.accountId&&sameVesselPair(row,data)&&assignmentWithinOneDay(row,data))
      .map(row=>[row.id,row])).values()];
+   // Shadow classification (disabled by default): records explainable
+   // EXACT/PROBABLE/AMBIGUOUS/DISTINCT evidence for review without changing
+   // candidate selection or any write decision.
+   const duplicateClassification=options.duplicateShadow===true
+     ? duplicateCandidates.map(candidate=>({orderId:String(candidate.id),...classifyProgramDuplicate({
+        motherVessel:data.motherVessel,lighterVessel:data.lighterVessel,startDate:data.dutyDate,
+        shift:data.shift,masterMobile:data.masterMobile,escortMobile:data.escortMobile,
+        releasePoint:data.releasePoint,
+       },{
+        motherVessel:String(value(candidate,'mother_vessel','motherVessel')),
+        lighterVessel:String(value(candidate,'lighter_vessel','lighterVessel')),
+        startDate:String(value(candidate,'duty_date','dutyDate')),
+        shift:String(value(candidate,'shift')),
+        masterMobile:String(candidate.parsed?.fields?.masterMobile??value(candidate,'master_mobile','masterMobile')??''),
+        escortMobile:String(value(candidate,'escort_mobile','escortMobile')),
+        releasePoint:String(value(candidate,'release_point','releasePoint')),
+       })}))
+     : undefined;
    const duplicate=duplicateCandidates.length===1?duplicateCandidates[0]:null;
    const sameBusinessOrder=!!duplicate&&rowBusinessKey(duplicate)===key
      &&String(duplicate.shift).toUpperCase()===String(data.shift).toUpperCase();
@@ -300,7 +319,7 @@ export function deriveEscortRegisterOps(account,messages,contacts,existingRows,a
       :confirmationMatch.orderId
        ?['ASSIGNMENT_MATCH_CANDIDATE_REQUIRES_REVIEW']
        :['DRAFT_MATCH_UNRESOLVED'])];
-   const row={id,accountId:account.accountId,clientContactId:contact.id,clientPhone:contact.phone,chatJid:message.chatJid,sourceMessageId:message.id,sourceHash:source,blockKey,sourceTime:message.sourceTime,businessKey:duplicate?rowBusinessKey(duplicate):duplicateCandidates.length?null:key,...data,status:'REVIEW',reasons,parsed:{...block,source:sourceProvenance,candidateDraftIds:candidates.map(candidate=>candidate.id),businessDuplicateOrderId:duplicate?.id??null,potentialDuplicateOrderIds:duplicateCandidates.map(candidate=>candidate.id),confirmationMatch,evidenceOnly:message.direction!=='OUTGOING',ownerRule:'ASSIGNMENT_DOES_NOT_CONFIRM_OR_START_DUTY'},confirmationMessageId:message.direction==='OUTGOING'?message.id:null,confirmationSourceHash:message.direction==='OUTGOING'?source:null,sourceText:message.text};
+   const row={id,accountId:account.accountId,clientContactId:contact.id,clientPhone:contact.phone,chatJid:message.chatJid,sourceMessageId:message.id,sourceHash:source,blockKey,sourceTime:message.sourceTime,businessKey:duplicate?rowBusinessKey(duplicate):duplicateCandidates.length?null:key,...data,status:'REVIEW',reasons,parsed:{...block,source:sourceProvenance,...(duplicateClassification?{duplicateClassification}:{}),candidateDraftIds:candidates.map(candidate=>candidate.id),businessDuplicateOrderId:duplicate?.id??null,potentialDuplicateOrderIds:duplicateCandidates.map(candidate=>candidate.id),confirmationMatch,evidenceOnly:message.direction!=='OUTGOING',ownerRule:'ASSIGNMENT_DOES_NOT_CONFIRM_OR_START_DUTY'},confirmationMessageId:message.direction==='OUTGOING'?message.id:null,confirmationSourceHash:message.direction==='OUTGOING'?source:null,sourceText:message.text};
    ops.push({kind:'REVIEW',row,event:{id:hash(['escort-order-event',id,'ASSIGNMENT_REVIEW',source]),orderId:id,eventType:'ASSIGNMENT_REVIEW',sourceMessageId:message.id,sourceHash:source,payload:{...row,ownerRule:'ASSIGNMENT_DOES_NOT_CONFIRM_OR_START_DUTY',source:sourceProvenance}}});
    existingHashes.add(`${account.accountId}|${source}|${blockKey}`);
    if(!known.some(candidate=>candidate.id===row.id)){

@@ -8,6 +8,8 @@ import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {KpiCard,KpiGrid,LoadingLines,PageNotice,Unavailable,useApi,bdt} from '@/app/platform/ui';
+import {vesselReport,reportCsv} from '@/lib/vessel-reports';
+import {saveCsv} from '@/lib/register';
 import {opUrl,rangeCutoff,type OperationsSnapshot,ESCORT_SUMMARY_URL,monthlyTotals} from '@/app/platform/ops-client';
 import type {EscortSummaryResponse} from '@/app/sources-review/view';
 
@@ -27,6 +29,7 @@ const monthConfig={
 export default function InsightsView(){
   const ops=useApi<OperationsSnapshot>(opUrl('cash'));
   const escort=useApi<EscortSummaryResponse>(ESCORT_SUMMARY_URL);
+  const register=useApi<{rows:Array<{id:string;motherVessel:string;lighterVessel:string;escortName?:string|null;startDate:string;status?:string|null}>} >('/api/register?export=1');
   const [range,setRange]=useState('90');
   const [from,setFrom]=useState(''),[to,setTo]=useState('');
 
@@ -129,6 +132,27 @@ export default function InsightsView(){
         </CardContent>
       </Card>
     </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Vessel report by mother vessel</CardTitle>
+        <CardDescription>Read-only aggregate of the verified register. Salary/transport columns stay empty until release data is recorded.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {register.loading?<LoadingLines/>:register.error?<Unavailable reason={register.error}/>:(()=>{
+          const report=vesselReport(register.data?.rows??[],{groupBy:'mother',from:from||undefined,to:to||undefined});
+          return <div className="flex flex-col gap-2">
+            <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-1">Mother vessel</th><th>Programs</th><th>Escorts</th><th>Duration</th><th>Pay</th></tr></thead><tbody>
+              {report.rows.slice(0,10).map(row=><tr key={row.key} className="border-b last:border-0"><td className="py-1">{row.key}</td><td>{row.programs}</td><td>{row.escorts}</td><td>{row.durationDays===null?'Not recorded':row.durationDays}</td><td>{row.totalMinor===null?'Not recorded':bdt.format(row.totalMinor/100)}</td></tr>)}
+              {!report.rows.length&&<tr><td colSpan={5} className="py-4 text-center text-xs text-muted-foreground">No programs in range.</td></tr>}
+            </tbody></table></div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{report.totals.programs} programs · {report.rows.length} mother vessels</span>
+              <button type="button" className="underline underline-offset-2" onClick={()=>saveCsv(reportCsv(report.rows),'al-rifai-vessel-report.csv')}>Export CSV</button>
+            </div>
+          </div>;
+        })()}
+      </CardContent>
+    </Card>
     <p className="text-[11px] text-muted-foreground">Drill-down: <Link href="/transactions" className="underline-offset-2 hover:underline">Transactions</Link> · <Link href="/sources-review" className="underline-offset-2 hover:underline">Sources &amp; Review</Link></p>
   </div>;
 }

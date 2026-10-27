@@ -64,7 +64,7 @@ test('shift disagreement between a recorded order and the reply is review-only',
   const existing=[{
     id:'order-7',status:'DRAFT',account_id:'wa-01',client_contact_id:contacts[0].id,
     client_phone:contacts[0].phone,chat_jid:clientChat,mother_vessel:'Alpha Unity',
-    lighter_vessel:'Light One',master_mobile:'01829984145',duty_date:'2026-10-03',shift:'N',
+    lighter_vessel:'Light One',master_mobile:'01829984145',escort_mobile:'01754334400',duty_date:'2026-10-03',shift:'N',
     source_message_id:'order-msg-7',source_time:'2026-10-03T13:00:00+00:00',
     dataset_epoch:'CANONICAL_BACKFILL_20261026',parsed:{fields:{masterMobile:'01829-984145'}},
   }];
@@ -94,4 +94,30 @@ Escort mobile: 01754-334400
   const review=ops.find(op=>op.kind==='REVIEW');
   assert.ok(review);
   assert.equal(review.row.parsed.confirmationMatch.state,'UNMATCHED');
+});
+
+test('shadow duplicate classification records evidence without changing state', () => {
+  const existing=[{
+    id:'order-shadow',status:'DRAFT',account_id:'wa-01',client_contact_id:contacts[0].id,
+    client_phone:contacts[0].phone,chat_jid:clientChat,mother_vessel:'Alpha Unity',
+    lighter_vessel:'Light One',master_mobile:'01829984145',escort_mobile:'01754334400',duty_date:'2026-10-03',shift:'N',
+    source_message_id:'order-msg-shadow',source_time:'2026-10-03T13:00:00+00:00',
+    dataset_epoch:'CANONICAL_BACKFILL_20261026',parsed:{fields:{masterMobile:'01829-984145'}},
+  }];
+  const opsWith=deriveEscortRegisterOps(account,[
+    message('order-shadow-2',orderText,'INCOMING'),
+    message('assign-shadow',assignment('N'),'OUTGOING','8801880446111'),
+  ],contacts,existing,{},[],CASH_SCOPE_CHATS,{...gate,duplicateShadow:true});
+  const review=opsWith.find(op=>op.kind==='REVIEW');
+  assert.ok(Array.isArray(review.row.parsed.duplicateClassification));
+  assert.ok(review.row.parsed.duplicateClassification.length>=1);
+  const first=review.row.parsed.duplicateClassification[0];
+  assert.ok(['EXACT','PROBABLE','AMBIGUOUS','DISTINCT'].includes(first.state));
+
+  const opsWithout=deriveEscortRegisterOps(account,[
+    message('order-shadow-2',orderText,'INCOMING'),
+    message('assign-shadow',assignment('N'),'OUTGOING','8801880446111'),
+  ],contacts,existing,{},[],CASH_SCOPE_CHATS,gate);
+  const plain=opsWithout.find(op=>op.kind==='REVIEW');
+  assert.equal(plain.row.parsed.duplicateClassification,undefined);
 });

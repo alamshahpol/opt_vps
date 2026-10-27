@@ -1,6 +1,6 @@
 "use client";
-import "./cash.css";
-import "./cash-dashboard.css";
+import "../cash.css";
+import "../cash-dashboard.css";
 import {useEffect,useState} from "react";
 
 type User={id:string;username:string;role:"ADMIN"|"USER";displayName:string;mustChangePassword:boolean};
