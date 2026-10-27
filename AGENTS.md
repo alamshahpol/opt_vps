@@ -12,6 +12,13 @@
 
 ## 0. Current Production Position (verified 2026-10-27)
 
+> **Implementation update — 2026-10-27 (session 3):** source `main` is at
+> `53b7ae3`. Added the Vessel command API (`/api/vessel-programs`) and
+> `/vessel-register` UI with server-resolved actor, revision/idempotency guards,
+> append-only audit and migration-dependency gating; 0032 revised + rehearsed.
+> Migration readiness pack: `apps/al-rifai/docs/MIGRATION-READINESS-0031-0032.md`.
+> No production deployment, migration, WhatsApp, permission or Cash Freeze change.
+>
 > **Implementation update — 2026-10-27 (session 2):** source `main` is at
 > `765835c` (feature commits `b8bd93d`, `1c604be`, `2805879`). Added: Cash
 > submission/approval API + `/cash/submissions` queue UI

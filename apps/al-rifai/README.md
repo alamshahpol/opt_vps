@@ -30,6 +30,7 @@ New tested domain modules added in the same session:
 | `lib/cash-approval.ts` | Reviewer policy: role-scoped reads, reviewer≠submitter, decision validation |
 | `db/migration-candidates/0032_*` | **Prepared, unapplied** Vessel SECURITY DEFINER command layer (add/edit/release/assign/void) |
 | `/cash/submissions` | Cash Portal submission + review queue UI (dependency-aware) |
+| `/vessel-register` | Vessel Register with command API (`/api/vessel-programs`): details, audit, source, add/edit/release/assign/void (gated by 0032) |
 
 ---- One PostgreSQL database `alrifai`; one application container `al-rifai-app-1`.
 - WA-01 / Bridge-1 is the authorized source for Cash and Vessel messages; its

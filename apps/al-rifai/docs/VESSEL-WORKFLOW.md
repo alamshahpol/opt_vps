@@ -274,6 +274,17 @@ but keeps its own identity set, scope and processor:
 
 ---
 
+### Command API and UI (2026-10-27, session 3)
+
+`app/api/vessel-programs` exposes authenticated add/edit/release/assign/replace/
+void plus program detail, audit history and linked WhatsApp source. The actor is
+resolved server-side (`ALRIFAI_VESSEL_COMMAND_ACTOR`, fallback
+`ALRIFAI_CASH_OWNER_PERSON_REF`), never from the request. The SQL functions now
+enforce `expected_revision` (409 on conflict) and `command_key` idempotency, and
+append exactly one ledger event per command. `/vessel-register` wires the UI and
+shows commands disabled until the migration is available (`available:true`).
+**Production remains read-only: 0032 is not applied.**
+
 ### Command layer (prepared 2026-10-27, session 2)
 
 `db/migration-candidates/0032_vessel_program_commands.sql` prepares five narrowly

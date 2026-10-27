@@ -1,5 +1,55 @@
 # Next-Session Handoff — Updated After Session 3
 
+## IMPLEMENTATION SESSION 3 — 2026-10-27 (Vessel command integration & migration readiness)
+
+### Source state
+- `main` HEAD `53b7ae3` (feature commits `6df2352` API, `53b7ae3` UI); base
+  `625d9e6`. Working tree clean; origin/main still `17e004d` (no push).
+- Production unchanged: app image `sha256:049627fa…` running; candidate
+  `sha256:d6f274…` undeployed; no migrations applied.
+
+### Completed (tested, committed)
+1. **Vessel command API** `app/api/vessel-programs` — GET program detail + audit
+   history + linked WhatsApp source; POST add/edit/release/assign/replace/void.
+   Server-side auth (`local-validator` only), server-resolved actor
+   (`ALRIFAI_VESSEL_COMMAND_ACTOR`, fallback `ALRIFAI_CASH_OWNER_PERSON_REF`),
+   zod validation, deterministic program ids, optimistic revision checks and
+   command-key idempotency enforced in the SQL functions, safe error mapping
+   (`REVISION_CONFLICT` 409, `PROGRAM_NOT_FOUND` 404, migration dependency 503).
+2. **0032 revised and re-rehearsed** — functions now take `expected_revision` and
+   `command_key`, reject stale revisions, replay idempotently, keep one appended
+   event per command, stay EXECUTE-only, use fixed `search_path`, require a
+   VERIFIED person actor, and never DELETE. Rehearsal: ledger 6 events / revision
+   5 / Voided retained / 2 assignment revisions / direct UPDATE+DELETE denied /
+   stale revision rejected / replay appended nothing / Cash untouched.
+3. **Vessel Register UI** `/vessel-register` (new sidebar item) — searchable
+   program table, details sheet, audit history, WhatsApp source viewer, Add/Edit/
+   Release/Assign/Replace/Void drawers and dependency-aware disabling. Nothing
+   is presented as saved until the server confirms; the legacy register stays.
+4. **Cash approval verification** — 0031 rehearsal re-run: PENDING_REVIEW
+   projection, duplicate payload rejection, self-approval rejection, append-only
+   UPDATE/DELETE block, repeated decisions append, `cash_postings`=0, INSERT+
+   SELECT-only grants. Endpoint policy tests (role scope, reviewer≠submitter,
+   CSRF/origin inherited from the existing portal auth) pass.
+5. **Migration readiness pack** — `docs/MIGRATION-READINESS-0031-0032.md` with
+   exact schema, compatibility, ordering, roles, backup/restore rehearsal,
+   execution and post-verification commands, and forward-recovery strategy.
+
+### Verification evidence
+- `pnpm test`: **124 tests, 123 pass, 1 skipped, 0 fail**.
+- `pnpm typecheck` pass; `pnpm build` pass (routes `/vessel-register`,
+  `/api/vessel-programs`); lint clean for changed files.
+- Isolated PostgreSQL: bootstrap + 0031 rehearsal + 0032 rehearsal all
+  `..._OK`; Python parser suite OK.
+
+### Still open / Owner decisions
+- Apply 0031 + 0032 to production and set `ALRIFAI_VESSEL_COMMAND_ACTOR` (or rely
+  on the Cash Owner person ref); command UI stays locked until `available:true`.
+- Deploy the platform UI image and record commit↔image traceability.
+- Outbound WhatsApp draft delivery; salary rules; legacy program UPDATE policy.
+
+---
+
 ## IMPLEMENTATION SESSION 2 — 2026-10-27 (Cash approval workflow + Vessel command layer)
 
 ### Source state
