@@ -55,15 +55,16 @@ test('payload hash is deterministic for identical content and changes with mater
 });
 
 test('prepared migration keeps financial facts append-only and unposted', () => {
-  const sql = readFileSync(new URL('../db/migration-candidates/0031_cash_instruction_reviews.sql', import.meta.url), 'utf8');
+  const sql = readFileSync(new URL('../db/migration-candidates/0031_cash_submissions_and_reviews.sql', import.meta.url), 'utf8');
   assert.match(sql, /PREPARED MIGRATION CANDIDATE — NOT APPLIED TO PRODUCTION/);
-  assert.match(sql, /cash_instruction_reviews_append_only/);
+  assert.match(sql, /cash_submission_reviews_append_only/);
+  assert.match(sql, /cash_submissions_append_only/);
   assert.match(sql, /alrifai_foundation_append_only/);
   assert.doesNotMatch(sql, /GRANT[^;]*\bUPDATE\b/i, 'no UPDATE grant may be prepared');
   assert.doesNotMatch(sql, /GRANT[^;]*\bDELETE\b/i, 'no DELETE grant may be prepared');
   assert.doesNotMatch(sql, /INSERT INTO public\.cash_postings/i, 'approval must never insert postings');
   assert.doesNotMatch(sql, /INSERT INTO public\.cash_movements/i, 'approval must never insert movements');
-  assert.match(sql, /REVOKE ALL ON public\.cash_instruction_reviews FROM PUBLIC/);
+  assert.match(sql, /REVOKE ALL ON public\.cash_submissions, public\.cash_submission_reviews FROM PUBLIC/);
   assert.match(sql, /decision text NOT NULL CHECK \(decision IN \('APPROVED','REJECTED','CORRECTION_REQUESTED'\)\)/);
   assert.match(sql, /reviewer_not_submitter/, 'a reviewer cannot approve their own submission');
 });

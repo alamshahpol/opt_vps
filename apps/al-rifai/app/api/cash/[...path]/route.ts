@@ -1,6 +1,8 @@
 import {NextRequest} from "next/server";
 import {auth,audit,bodyOptional,bodyString,CashPortalError,clearCookie,clearLoginFailures,createSession,cookieHeader,database,findUser,hashPassword,hashToken,json,loginRateLimited,noStoreHeaders,noteLoginFailure,publicUser,refreshCsrf,requireOrigin,requireCashSuperAdmin,verifyPassword,userById,isCashSuperAdmin} from "@/lib/cash-portal";
 import {assertCanCreateUser,assertCanManageUser,assertCanResetPassword,CashUserPolicyError} from "@/lib/cash-user-policy";
+import {validateSubmission} from "@/lib/cash-submission";
+import {assertCanDecide,ApprovalError,SUBMISSION_SCHEMA_DEPENDENCY} from "@/lib/cash-approval";
 import {CASH_SCOPE_ACCOUNT,CASH_SCOPE_CHATS,cashScopedWhere} from "@/lib/cash-scope";
 
 export const runtime="nodejs";
@@ -15,6 +17,10 @@ async function activeAdminCount(){const row=await database().query<{n:number}>("
 function forced(user:{mustChangePassword:boolean}){if(user.mustChangePassword)throw new CashPortalError("PASSWORD_CHANGE_REQUIRED",403);}
 function cleanUsername(value:unknown){const username=bodyString(value,80);return username&&/^[A-Za-z0-9._-]+$/.test(username)?username:undefined;}
 function cleanId(value:unknown){return typeof value==="string"&&/^[a-f0-9]{64}$/.test(value)?value:undefined;}
+const schemaUnavailable=(error:unknown)=>!!error&&typeof error==="object"&&(error as {code?:string}).code==="42P01";
+const schemaReply=()=>reply({error:SUBMISSION_SCHEMA_DEPENDENCY,available:false,migration:"db/migration-candidates/0031_cash_submissions_and_reviews.sql"},503);
+const cashMobile=(value:string)=>value.startsWith("0")?"+880"+value.slice(1):value;
+function approvalReply(error:ApprovalError){throw new CashPortalError(error.code,403);}
 async function handle(request:NextRequest,segments:string[]){
  const action=segments[0]||"";
  if(request.method==="POST"&&action==="login"){
@@ -28,6 +34,64 @@ async function handle(request:NextRequest,segments:string[]){
  if(action==="me"&&request.method==="GET"){try{const result=await auth(request);return reply({user:result.user,csrf:await refreshCsrf(result.token)});}catch(e){return reply({error:e instanceof CashPortalError?e.code:"AUTHENTICATION_REQUIRED"},401);}}
  const result=await auth(request,request.method!=="GET");
  if(action==="logout"&&request.method==="POST"){await database().query("DELETE FROM public.cash_portal_sessions WHERE id=$1",[hashToken(result.token)]);await audit(result.user.id,result.user.id,"LOGOUT",{});return reply({ok:true},200,{"Set-Cookie":clearCookie()});}
+ // ---- Cash submissions: submission is not approval and never posts. ----
+ if(action==="submissions"&&request.method==="POST"){
+  forced(result.user);
+  const body=await readBody(request),validation=validateSubmission(body);
+  if(!validation.ok)return reply({error:"SUBMISSION_INVALID",reasons:validation.reasons},400);
+  const payload=validation.payload,id=hashToken(`cash-submission:${payload.payloadHash}`);
+  try{
+   const inserted=await database().query<{id:string}>(
+    `INSERT INTO public.cash_submissions
+     (id,scope_account,submitted_by_user_ref,submitted_by_role,employee_name,employee_mobile,payout_mobile,method,amount_minor,purpose,transaction_date,note,evidence_ref,payload,payload_hash)
+     VALUES($1,'wa-01',$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,$12,$13::jsonb,$14)
+     ON CONFLICT (payload_hash) DO NOTHING RETURNING id`,
+    [id,result.user.id,result.user.role,payload.employeeName,cashMobile(payload.employeeMobile),cashMobile(payload.payoutMobile),payload.method,payload.amountMinor,payload.purpose,payload.date,payload.note,payload.evidenceRef,JSON.stringify({...payload,state:undefined,payloadHash:undefined}),payload.payloadHash]);
+   const duplicate=!inserted.rows.length;
+   const submissionId=duplicate?(await database().query<{id:string}>("SELECT id FROM public.cash_submissions WHERE payload_hash=$1",[payload.payloadHash])).rows[0]?.id??id:id;
+   await audit(result.user.id,submissionId,"SUBMISSION_CREATED",{scopeAccount:"wa-01",payloadHash:payload.payloadHash,duplicate});
+   return reply({ok:true,id:submissionId,state:"PENDING_REVIEW",duplicate,postingAuthorized:false},duplicate?200:201);
+  }catch(error){if(schemaUnavailable(error))return schemaReply();throw error;}
+ }
+ if(action==="submissions"&&request.method==="GET"){
+  forced(result.user);
+  const id=cleanId(request.nextUrl.searchParams.get("id"));
+  try{
+   const rows=await database().query<Row>(
+    `SELECT submission_id AS id,scope_account,submitted_by_user_ref,employee_name,employee_mobile,payout_mobile,method,amount_minor,purpose,transaction_date,created_at,review_state,decision,decided_by,decided_at
+     FROM public.cash_submission_review_state
+     WHERE ($1::boolean OR submitted_by_user_ref=$2)
+     ORDER BY created_at DESC LIMIT 200`,
+    [result.user.role==="ADMIN",result.user.id]);
+   const visible=id?rows.rows.filter(row=>row.id===id):rows.rows;
+   if(id&&!visible.length)return reply({error:"SUBMISSION_NOT_FOUND"},404);
+   const decisions=id?await database().query<Row>(
+    "SELECT id,decision,actor_user_ref,note,decided_at FROM public.cash_submission_reviews WHERE submission_id=$1 ORDER BY decided_at,id",[id]):{rows:[]};
+   return reply({available:true,rows:visible,decisions:decisions.rows,scope:"self"});
+  }catch(error){if(schemaUnavailable(error))return schemaReply();throw error;}
+ }
+ if(action==="submissions"&&segments[1]&&segments[2]==="decision"&&request.method==="POST"){
+  forced(result.user);requireAdmin(result.user);
+  const submissionId=cleanId(segments[1]);if(!submissionId)return reply({error:"SUBMISSION_ID_INVALID"},400);
+  const body=await readBody(request);
+  try{
+   const submission=(await database().query<Row>("SELECT id,submitted_by_user_ref FROM public.cash_submissions WHERE id=$1",[submissionId])).rows[0];
+   if(!submission)return reply({error:"SUBMISSION_NOT_FOUND"},404);
+   const prior=await database().query<Row>("SELECT actor_user_ref,decision FROM public.cash_submission_reviews WHERE submission_id=$1",[submissionId]);
+   let decision;
+   try{
+    decision=assertCanDecide({actor:result.user,submission:{id:String(submission.id),submittedByUserRef:String(submission.submitted_by_user_ref)},decision:String(body.decision??''),note:typeof body.note==='string'?body.note:'',priorDecisions:prior.rows.map((row)=>({actorUserRef:String(row.actor_user_ref),decision:String(row.decision)}))});
+   }catch(error){if(error instanceof ApprovalError)approvalReply(error);throw error;}
+   const decisionId=hashToken(`cash-decision:${submissionId}:${result.user.id}:${decision.decision}:${prior.rows.length}`);
+   await database().query(
+    `INSERT INTO public.cash_submission_reviews(id,submission_id,decision,actor_user_ref,actor_role,submitted_by_user_ref,note,payload_hash)
+     VALUES($1,$2,$3,$4,'ADMIN',$5,$6,$7)`,
+    [decisionId,submissionId,decision.decision,result.user.id,String(submission.submitted_by_user_ref),decision.note,hashToken(`decision-payload:${submissionId}:${decisionId}`)]);
+   await audit(result.user.id,submissionId,"SUBMISSION_DECISION",{decision:decision.decision,postingAuthorized:false});
+   const projected=(await database().query<Row>("SELECT review_state,decision,decided_at FROM public.cash_submission_review_state WHERE submission_id=$1",[submissionId])).rows[0];
+   return reply({ok:true,id:decisionId,reviewState:projected?.review_state??null,postingAuthorized:false},201);
+  }catch(error){if(schemaUnavailable(error))return schemaReply();throw error;}
+ }
  if(result.user.mustChangePassword&&!['password','summary','profile','logout'].includes(action))forced(result.user);
  if(action==="profile"&&request.method==="PATCH"){
   const body=await readBody(request),displayName=bodyOptional(body.displayName,150),email=bodyOptional(body.email,320),mobile=bodyOptional(body.mobile,50),whatsapp=bodyOptional(body.whatsappNumber,50);
