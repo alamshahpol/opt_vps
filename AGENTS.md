@@ -13,7 +13,7 @@
 ## 0. Current Production Position (verified 2026-10-27)
 
 > **Implementation update — 2026-10-27 (session 3):** source `main` is at
-> `53b7ae3`. Added the Vessel command API (`/api/vessel-programs`) and
+> `97de57c` (feature commits `6df2352`, `53b7ae3`). Added the Vessel command API (`/api/vessel-programs`) and
 > `/vessel-register` UI with server-resolved actor, revision/idempotency guards,
 > append-only audit and migration-dependency gating; 0032 revised + rehearsed.
 > Migration readiness pack: `apps/al-rifai/docs/MIGRATION-READINESS-0031-0032.md`.
