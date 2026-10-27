@@ -12,7 +12,8 @@
 
 ## 0. Current Production Position (verified 2026-10-27)
 
-> **Release — 2026-10-27 (application-only):** `main` `2881926` deployed as image
+> **Release — 2026-10-27 (application-only):** release commit `2881926` (compose
+> pin committed in `6213833`+) deployed as image
 > `sha256:34ce3060…` (candidate `d6f274…` superseded; first attempt rolled back
 > over a missing worker module, fixed and redeployed). Migrations 0031/0032
 > remain unapplied; Cash Freeze intact (0 current postings). Backups and
