@@ -274,6 +274,18 @@ but keeps its own identity set, scope and processor:
 
 ---
 
+### Command layer (prepared 2026-10-27, session 2)
+
+`db/migration-candidates/0032_vessel_program_commands.sql` prepares five narrowly
+scoped SECURITY DEFINER functions — add, edit, release, assign/replace, void —
+that require a VERIFIED person actor, bump `revision` by exactly one, append one
+`programCommand` ledger event, and expose EXECUTE only (no table UPDATE/DELETE
+grant). `tests/sql/0032_vessel_commands_rehearsal.sql` proves ledger integrity,
+denial of direct writes, unverified-actor rejection and zero Cash side effects in
+an isolated PostgreSQL. **Not applied to production; the register stays
+read-only until Owner approval.** Removal is implemented as VOID (status
+`Voided` + ledger event), never deletion.
+
 ## 8a. Implementation update — 2026-10-27 (post-audit session)
 
 The §9/§10 snapshot below is **historical and partially stale**. Verified current

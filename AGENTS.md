@@ -12,7 +12,15 @@
 
 ## 0. Current Production Position (verified 2026-10-27)
 
-> **Implementation update — 2026-10-27 (post-audit session):** source `main` is at
+> **Implementation update — 2026-10-27 (session 2):** source `main` is at
+> `2805879`. Added: Cash submission/approval API + `/cash/submissions` queue UI
+> (returns a migration-dependency response until the prepared schema is applied),
+> rehearsed candidate migrations `0031` (append-only submissions/reviews) and
+> `0032` (Vessel SECURITY DEFINER command layer), shadow duplicate classifier
+> (`ALRIFAI_DUPLICATE_CLASSIFIER=SHADOW`, default off), and a vessel report panel.
+> No production image, database, WhatsApp, permission or Cash Freeze change.
+>
+> **Implementation update — 2026-10-27 (post-audit session):** source `main` was
 > `c93762d` (base `d5dfef28…`). New tested modules: Cash user policy guards,
 > verified-Admin + shift confirmation evidence, duplicate classification,
 > configurable payroll engine, Admin order-draft review UI, WhatsApp TXT format

@@ -26,7 +26,10 @@ New tested domain modules added in the same session:
 | `lib/order-draft.ts` | Admin order draft composition (no sending) |
 | `lib/vessel-reports.ts` | Read-only mother/lighter/escort/date aggregates + CSV |
 | `lib/cash-submission.ts` | PENDING_REVIEW submission validation (no posting) |
-| `db/migration-candidates/0031_*` | **Prepared, unapplied** append-only Cash review schema |
+| `db/migration-candidates/0031_*` | **Prepared, unapplied** Cash submissions + append-only review schema (rehearsed) |
+| `lib/cash-approval.ts` | Reviewer policy: role-scoped reads, reviewer≠submitter, decision validation |
+| `db/migration-candidates/0032_*` | **Prepared, unapplied** Vessel SECURITY DEFINER command layer (add/edit/release/assign/void) |
+| `/cash/submissions` | Cash Portal submission + review queue UI (dependency-aware) |
 
 ---- One PostgreSQL database `alrifai`; one application container `al-rifai-app-1`.
 - WA-01 / Bridge-1 is the authorized source for Cash and Vessel messages; its

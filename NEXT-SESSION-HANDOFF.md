@@ -1,5 +1,62 @@
 # Next-Session Handoff — Updated After Session 3
 
+## IMPLEMENTATION SESSION 2 — 2026-10-27 (Cash approval workflow + Vessel command layer)
+
+### Source state
+- `main` commit `2805879`; unit commits: `b8bd93d` (Cash submissions/approval
+  API + queue UI + rehearsed schema), `1c604be` (Vessel SECURITY DEFINER command
+  layer, prepared + rehearsed), `2805879` (submissions UI, shadow duplicate
+  classifier, vessel report panel). Base: `582e5e9`.
+- Production unchanged: image `sha256:049627fa…` running; candidate
+  `sha256:d6f274…` still undeployed. No push, no migration applied to production.
+
+### Completed (tested, committed)
+1. **Cash submissions & approval (Priority 2)** — endpoints
+   `POST/GET /api/cash/submissions` and `POST /api/cash/submissions/:id/decision`
+   with PENDING_REVIEW, role-scoped reads (ADMIN all / USER own), CSRF+origin
+   enforcement, reviewer≠submitter, append-only decisions, duplicate payload
+   idempotency, and explicit `MIGRATION_0031_…_NOT_APPLIED` dependency response
+   when the schema is absent. Pure policy: `lib/cash-approval.ts`; validation:
+   `lib/cash-submission.ts`. UI: `/cash/submissions` (submit, queue, decisions,
+   audit history) linked from the Cash portal sidebar.
+2. **Prepared schema 0031** — `cash_submissions` + `cash_submission_reviews`
+   (append-only triggers, reviewer≠submitter, INSERT/SELECT-only runtime grants,
+   projection view, no ledger inserts). Rehearsed in isolated PostgreSQL:
+   PENDING_REVIEW projection, duplicate rejection, self-approval rejection,
+   UPDATE/DELETE blocked, repeated decisions append, zero cash_postings.
+3. **Vessel command layer (Priority 1, prepared)** — `0032` adds five SECURITY
+   DEFINER functions (add, edit, release, assign/replace, void) requiring a
+   VERIFIED person actor, revision+1 and one appended `programCommand` event,
+   granting EXECUTE only (no table UPDATE/DELETE). Rehearsed: 6 ledger events /
+   revision 5 / Voided status preserved, 2 assignment revisions, direct UPDATE
+   and DELETE denied to the runtime role, unverified actor rejected, Cash
+   untouched. **Not applied; UI remains read-only until approved.**
+4. **Duplicate classifier shadow integration** — `ALRIFAI_DUPLICATE_CLASSIFIER=SHADOW`
+   (default off) records EXACT/PROBABLE/AMBIGUOUS/DISTINCT evidence in
+   `parsed.duplicateClassification` without changing candidate selection or
+   writes. Tests cover both flag states.
+5. **Vessel reports UI** — `/insights` now includes a mother-vessel report with
+   program/escort counts, honest "Not recorded" payroll columns and CSV export.
+
+### Verification evidence
+- `pnpm test`: **118 tests, 117 pass, 1 skipped, 0 fail** (includes 6 approval,
+  6 submission, 6 integrity, 10 duplicate, 8 payroll, 5 report, 8 Python parser).
+- `pnpm typecheck`: pass. `pnpm build`: pass (after fixing relative CSS import in
+  the new page). Isolated DB rehearsals: `REHEARSAL_OK`,
+  `VESSEL_COMMANDS_REHEARSAL_OK`.
+- Rehearsal bootstrap: `tests/sql/rehearsal_bootstrap.sh` recreates a throwaway
+  database, applies all migrations + candidates, requires a fresh container.
+
+### Still open / blocked
+- Applying 0031/0032 to production and enabling the command UI: Owner decision.
+- Register command UI wiring (buttons/drawers) remains disabled until 0032 is
+  approved; the migration is rehearsed but no endpoint calls it yet.
+- Cash submission endpoint returns 503 with the dependency while 0031 is absent.
+- Outbound WhatsApp draft delivery, salary business rules, program UPDATE grants
+  remain Owner decisions.
+
+---
+
 ## IMPLEMENTATION SESSION — 2026-10-27 (post-audit, authoritative for code state)
 
 ### Source state
