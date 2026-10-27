@@ -12,8 +12,9 @@
 # evidence, imported archives, build caches and the manifest files themselves.
 # SHA-256 is the primary integrity reference; SHA-1 and MD5 are supplementary.
 #
-# Verification (manifest lives in a later documentation commit):
+# Verification (the manifest lives in a later documentation commit):
 #   git archive --format=tar 06356b6e2c2b92fbf120d2b8350d0a9c1917b28e | tar -x -C /tmp/alrifai-snapshot
+#   git show HEAD:docs/SOURCE_INTEGRITY_MANIFEST.sha256 > /tmp/alrifai-snapshot/docs/SOURCE_INTEGRITY_MANIFEST.sha256
 #   cd /tmp/alrifai-snapshot && sha256sum -c docs/SOURCE_INTEGRITY_MANIFEST.sha256
 #
 # Note: symlinks are recorded by the content of their target (sha256sum follows links).

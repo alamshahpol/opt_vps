@@ -550,6 +550,7 @@ system.
   `.sha256` (primary), `.sha1` and `.md5` companion files. Verify with:
   ```bash
   git archive --format=tar <source_commit> | tar -x -C /tmp/alrifai-snapshot
+  git show HEAD:docs/SOURCE_INTEGRITY_MANIFEST.sha256 > /tmp/alrifai-snapshot/docs/SOURCE_INTEGRITY_MANIFEST.sha256
   cd /tmp/alrifai-snapshot && sha256sum -c docs/SOURCE_INTEGRITY_MANIFEST.sha256
   ```
 - **Deployment relationship:** the currently running app image

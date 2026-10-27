@@ -1276,6 +1276,7 @@ sections remain dated historical evidence for business work.
 - Verify:
   ```bash
   git archive --format=tar 06356b6e2c2b92fbf120d2b8350d0a9c1917b28e | tar -x -C /tmp/alrifai-snapshot
+  git show HEAD:docs/SOURCE_INTEGRITY_MANIFEST.sha256 > /tmp/alrifai-snapshot/docs/SOURCE_INTEGRITY_MANIFEST.sha256
   cd /tmp/alrifai-snapshot && sha256sum -c docs/SOURCE_INTEGRITY_MANIFEST.sha256
   ```
 - The manifest covers the source snapshot, not the later documentation commit.
