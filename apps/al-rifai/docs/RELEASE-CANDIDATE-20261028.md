@@ -1,8 +1,11 @@
-# Release candidate record — 2026-10-28 (prepared, NOT deployed, NOT enabled)
+# Release candidate record — 2026-10-28 (stages 1–3 executed: `shadow` live, `on` not authorized)
 
 Unified Super Admin authentication on the Owner's existing Cash Portal credential.
-This document records the final verification and release preparation. **Nothing in
-this document has been applied to production.**
+Sections 1–7 record the pre-deployment verification and the prepared procedure.
+Section 8 records the Owner-authorized production execution on 2026-10-28:
+migration `0033` applied, candidate image deployed in `off` mode, then `shadow`
+enabled. `ALRIFAI_UNIFIED_AUTH_MODE=on` was **not** authorized and is **not**
+enabled; the `validator` Basic guard remains in force.
 
 | Item | Value |
 |---|---|
@@ -13,11 +16,13 @@ this document has been applied to production.**
 | Platform manifest | `sha256:1b76b666a8abd1487134633168de7aee5c5bf215f91a143e633b6092101b341c` |
 | Image config | `sha256:855ad77135c0ce9b985a183b35e4af554a6dff52967e891be398d4629f1b6195` |
 | Image build time / size | 2026-10-28T06:27:09+01:00 / 412,133,912 bytes |
-| Pre-change backup | `/var/lib/vps/al-rifai/backups/pre-unified-auth-20261028.dump` |
+| Pre-deployment backup | `/var/lib/vps/al-rifai/backups/pre-unified-auth-20261028.dump` |
 | Backup SHA-256 | `b1f8c8fa9f5061f896ba7e00ed2245cb60e269a93b85be73e7b7f185bc309792` |
 | Backup size / shape | 61 MB, `pg_dump -Fc`, 61 table-data sections, restore rehearsed |
-| Production image (preserved, unchanged) | `sha256:5f3e2aad0916f66f99c7af13339929ba8e0e041ef904de957c5d2f64244f3b06` |
-| Production migration ledger | 30 rows applied, newest `0030_epoch_scoped_register_and_program_writes.sql`; `0033` **not** applied |
+| Production image before execution | `sha256:5f3e2aad0916f66f99c7af13339929ba8e0e041ef904de957c5d2f64244f3b06` |
+| Production migration ledger before execution | 30 rows applied, newest `0030_epoch_scoped_register_and_program_writes.sql` |
+| **Currently deployed image** | `sha256:52105520…` (since 2026-10-28 06:53, mode `shadow`) |
+| **Current migration ledger** | 31 rows, newest `0033_unified_auth_sessions.sql` |
 
 ## 1. Owner identity verification (read-only, via the Cash application role)
 
@@ -191,14 +196,99 @@ behaviour exactly, Cash sessions stay valid); re-pin the previous image digest
 the ladder in §3. The `validator` Basic credential is the fallback that keeps the
 Owner reachable even if the database is unavailable.
 
-## 7. Remaining Owner approvals
+## 7. Owner approvals — status after execution
 
-1. Apply migration `0033` in production.
-2. Deploy the candidate image `sha256:52105520…` (records digest + commit `47f7e11`).
-3. Enable `ALRIFAI_UNIFIED_AUTH_MODE=shadow`, then `on` (each requires an app restart).
-4. Approve `ALRIFAI_UNIFIED_ORIGINS` if any host beyond
-   `https://alrifai.iamazim.com` and `https://app.al-rifai.iamazim.com` is required.
-5. Decide, separately, whether the `validator` Basic guard is ever retired.
+| # | Approval | Status |
+|---|---|---|
+| 1 | Apply migration `0033` in production | **DONE** 2026-10-28 (Owner-authorized) |
+| 2 | Deploy `sha256:52105520…` (record digest + commit `47f7e11`) | **DONE** 2026-10-28 (Owner-authorized) |
+| 3a | Enable `ALRIFAI_UNIFIED_AUTH_MODE=shadow` | **DONE** 2026-10-28 (Owner-authorized) |
+| 3b | Enable `ALRIFAI_UNIFIED_AUTH_MODE=on` | **NOT AUTHORIZED, NOT DONE** — needs the Owner's personal `/login` confirmation plus a new explicit authorization |
+| 4 | `ALRIFAI_UNIFIED_ORIGINS` beyond the two default hosts | not needed; defaults in force |
+| 5 | Retire the `validator` Basic guard | **NOT AUTHORIZED, NOT DONE** |
 
-Not done and not authorised by this record: production migration, deployment,
-restart, mode change, credential change, Cash posting or WhatsApp change.
+## 8. Production execution record — 2026-10-28
+
+Executed exactly the three authorized stages, with a verification gate before each.
+
+### 8.1 Pre-flight (read-only, passed)
+
+| Check | Result |
+|---|---|
+| Git | `967e026` on `main`, `0/0` vs `origin/main`; `47f7e11..967e026` is documentation only |
+| Candidate / rollback images | both present with the exact approved digests |
+| Running app before change | `sha256:5f3e2aad…`, healthy, compose pin matched |
+| PostgreSQL | healthy, 645 MB |
+| WA-01 / WA-02 | up 24 h / 7 d, untouched |
+| Cash portal | `/cash` → 200; `/api/cash/login` live |
+| Unified endpoints before change | `/api/auth/login` → 401 (not exposed in `off`) |
+| Owner identity | id `81a73b32…c79`, `Admin`, ADMIN, active, version 2, fingerprint `e4d99a36…` — matched baseline |
+| Super Admin mapping | exactly one id, equal to the Owner account |
+| Sessions | 24 total, 3 unexpired |
+| Migration ledger | 30 rows, newest `0030` |
+| Cash Freeze | 1,842 current instructions (BDT 947,339.00), **0 current postings**; legacy 1,610 / 1,586 postings |
+
+### 8.2 Fresh backup (passed)
+
+`pre-0033-20261028.dump` — 61 MB, 61 table-data sections,
+sha256 `2093fadf36082e97b58e66b17b95f7a7756671ed18288154b414d992616e5810`;
+`pg_restore -l` succeeded. Isolated restore into a throwaway Postgres 16 reproduced
+users 1 / sessions 24 / audit 33 / ledger 30 / current 1,842 / legacy 1,610 /
+postings 1,586 / movements 3,172 and the same password fingerprint — fidelity MATCH.
+Configuration snapshotted to
+`/var/lib/vps/al-rifai/backups/pre-unified-deploy-20261028/`.
+
+### 8.3 Migration 0033 (applied, verified)
+
+File sha256 `c7e05dae…`, unmodified vs HEAD, applied with `ON_ERROR_STOP` in its own
+transaction (exit 0); ledger row added with the same sha256 → 31 rows.
+
+| Post-apply check | Result |
+|---|---|
+| `capabilities` | `jsonb` NOT NULL default `'[]'::jsonb` |
+| `username_changed_at` | `timestamptz`, nullable |
+| CHECK `cash_portal_users_capabilities_array` | present |
+| Guard trigger / function | `cash_portal_users_guard` enabled BEFORE UPDATE/DELETE |
+| `ir_review_runtime` audit grants | `INSERT,SELECT` |
+| users grants | `INSERT,SELECT,UPDATE` (no DELETE) |
+| Users / sessions / unexpired / audit rows | 1 / 24 / 3 / 33 — unchanged |
+| Account id / role / active / version / fingerprint | unchanged |
+| Cash counts and `amount_minor` | unchanged; current postings still 0 |
+| `0031` / `0032` | not applied |
+
+### 8.4 Deployment with mode `off`
+
+`compose.yaml` re-pinned to `sha256:52105520…`; `docker compose up -d --no-deps app`
+recreated only `al-rifai-app-1`. PostgreSQL and both WhatsApp containers kept their
+uptimes. Verified: healthy, `/api/health` ok, `/cash` 200, Cash login endpoint live
+(`INVALID_CREDENTIALS`), `/login` `/dashboard` `/review` `/admin` 401 without Basic,
+`/api/core` 401 without and 200 with the legacy credential, TLS entry correct
+(workspace 401 / cash host 200 / unknown host 403), mirror disabled, WhatsApp
+outboxes empty, no error lines in the log.
+
+### 8.5 Shadow mode
+
+`ALRIFAI_UNIFIED_AUTH_MODE=shadow` in `app.env`; only the app service recreated.
+
+| Check | Result |
+|---|---|
+| Health | ok |
+| `/login` | 200 without Basic (sign-in surface reachable) |
+| Failed unified login | 401 `INVALID_CREDENTIALS`, **no** `Set-Cookie` |
+| Missing fields | 400 `CREDENTIALS_REQUIRED` |
+| Foreign `Origin` | 403 `ORIGIN_DENIED` |
+| `/dashboard` document navigation | `302 /login?next=%2Fdashboard` — shadow grants no authorization |
+| `/api/core` without auth | 401 (fail closed) |
+| `/api/core` / `/dashboard` with legacy Basic | 200 / 200 |
+| `/admin` without Basic | 401 |
+| `/admin` with the `validator` credential | `307 /dashboard` — validator is not the Super Admin |
+| `/api/cash/users` with Basic | 401 (Cash boundary unchanged) |
+| `/cash` and `/api/cash/login` | 200 / live |
+| Sessions / audit rows / fingerprint | 24 / 33 / `e4d99a36…` — unchanged |
+| Application log | no errors |
+
+### 8.6 Not performed
+
+`ALRIFAI_UNIFIED_AUTH_MODE=on`; retiring the `validator` guard; any username,
+password, hash, session or secret change; any Cash posting or WhatsApp send.
+

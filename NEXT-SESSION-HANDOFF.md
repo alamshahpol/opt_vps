@@ -1,5 +1,60 @@
 # Next-Session Handoff — Updated After Session 3
 
+## UNIFIED AUTH PRODUCTION ACTIVATION — 2026-10-28 (stages 1–3 done, `shadow` live)
+
+Owner-authorized production execution. **Three stages performed; `on` mode was not
+authorized and was not enabled.**
+
+**Stage 1 — pre-flight (read-only gate, passed).** Commit `967e026` (docs-only after
+the image commit `47f7e11`), candidate image present with the approved digest,
+rollback image present, PostgreSQL healthy, WA-01/WA-02 running and untouched, Cash
+portal serving `/cash` 200, unified endpoints not exposed. Identity matched the
+baseline exactly (one `Admin` row, id `81a73b32…c79`, ADMIN, active, version 2,
+fingerprint `e4d99a36…`, 24 sessions, 3 unexpired). Super Admin list holds exactly
+that id. Ledger was 30 rows.
+
+**Stage 2 — fresh backup (gate passed).**
+`/var/lib/vps/al-rifai/backups/pre-0033-20261028.dump`, 61 MB,
+sha256 `2093fadf36082e97b58e66b17b95f7a7756671ed18288154b414d992616e5810`,
+61 table-data sections, `pg_restore -l` OK. Isolated restore into throwaway
+Postgres 16 reproduced **every** critical count and the password fingerprint
+(`RESTORE_FIDELITY=MATCH`). Config rolled back up first:
+`/var/lib/vps/al-rifai/backups/pre-unified-deploy-20261028/`.
+
+**Stage 3 — migration 0033 applied.** File sha256
+`c7e05dae48389ac79758b8d633279bb2a9017fb2174812da3315b3eef6ab9158`, unmodified vs
+HEAD, applied in its own transaction with `ON_ERROR_STOP` (exit 0), ledger row
+inserted with the same sha256 → **31 rows**, newest
+`0033_unified_auth_sessions.sql`. Verified: `capabilities` jsonb NOT NULL default
+`'[]'`, `username_changed_at` present, CHECK constraint present, guard trigger
+`cash_portal_users_guard` enabled (BEFORE UPDATE/DELETE), guard function present,
+audit grants `INSERT,SELECT`, users grants unchanged (`INSERT,SELECT,UPDATE`).
+Users 1 / sessions 24 / audit 33 / fingerprint / Cash counts all unchanged.
+`0031` and `0032` were **not** applied.
+
+**Stage 4 — deployed with mode `off`.** `compose.yaml` re-pinned to
+`sha256:52105520…`; only the `app` service recreated (`--no-deps`). Verified:
+healthy, `/api/health` ok, `/cash` 200, Cash login endpoint live
+(`INVALID_CREDENTIALS` for a wrong credential), unified endpoints still 401,
+`/login` `/dashboard` `/review` `/admin` all 401 without Basic, Basic → `/api/core`
+200, TLS entry correct (workspace 401, cash host 200, unknown host 403), mirror
+disabled, WhatsApp outboxes empty, freeze intact.
+
+**Stage 5 — `shadow` enabled.** Mode set in `app.env`, only the `app` service
+recreated. Verified: health ok; `/login` 200 publicly; failed unified login → 401
+`INVALID_CREDENTIALS` with **no** cookie; missing fields → 400; foreign origin →
+403 `ORIGIN_DENIED`; `/dashboard` document navigation → `302 /login?next=%2Fdashboard`
+and `/api/core` → 401 (no session authorization in shadow, fail closed); Basic →
+`/api/core` 200 and `/dashboard` 200; `/admin` without Basic → 401, and with the
+validator credential → `307 /dashboard` (validator is not the Super Admin);
+`/api/cash/users` with Basic → 401 (Cash boundary unchanged). Sessions stayed 24,
+audit stayed 33, fingerprint unchanged, no errors in the app log.
+
+**Awaiting the Owner** (not done): personal `/login` confirmation with the existing
+Cash username/password, then a new explicit authorization for
+`ALRIFAI_UNIFIED_AUTH_MODE=on`. The `validator` guard stays; no credential, session
+or Cash record was changed.
+
 ## UNIFIED AUTH FINAL VERIFICATION — 2026-10-28 (release candidate prepared, NOT deployed)
 
 Owner-authorized final verification and release preparation. **No production

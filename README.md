@@ -79,6 +79,20 @@ Production WhatsApp restart policy remains manual (`no`); restarts, deployments,
 
 ## Current Qualification Status
 
+### Unified Super Admin authentication — 28 October 2026 (stages 1–3 of 4 complete)
+
+The Owner's existing Cash Portal username and password remain the single unified
+Super Admin credential. Migration `0033_unified_auth_sessions.sql` is applied
+(ledger 31 rows), and the verified candidate image
+`sha256:52105520…` (source commit `47f7e11`) is deployed with
+`ALRIFAI_UNIFIED_AUTH_MODE=shadow`. In shadow the new `/login` verifies the Cash
+credential but authorises **no** protected route; the legacy `validator` Basic
+guard still governs the workspace and remains the fallback. Account id, password
+hash, version, sessions and Cash postings are unchanged. `on` mode is **not**
+enabled and requires a new explicit Owner authorization plus the Owner's personal
+login confirmation. Record:
+[release candidate](apps/al-rifai/docs/RELEASE-CANDIDATE-20261028.md).
+
 ### AL-RIFA’I operational checkpoint — 21 October 2026
 
 At **07:05:32 CEST (+02:00)**, `al-rifai-app-1` was observed running and

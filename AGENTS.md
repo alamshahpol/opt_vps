@@ -62,6 +62,17 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **Production activation — 2026-10-28 (stages 1–3 done; `shadow` live; `on` NOT
+> enabled):** Owner-authorized `0033` is applied (ledger 31 rows) and the verified
+> candidate `sha256:52105520…` (commit `47f7e11`) is the running app image with
+> `ALRIFAI_UNIFIED_AUTH_MODE=shadow`. Identity preserved exactly: id
+> `81a73b32…c79`, `Admin`, ADMIN, version 2, fingerprint `e4d99a36…`, 24 sessions
+> intact. Cash Freeze intact (1,842 current instructions / 0 current postings).
+> Pre-migration backup `pre-0033-20261028.dump` (`2093fadf…`) restore-verified.
+> Rollback image `sha256:5f3e2aad…` retained. **`on` mode, retiring the `validator`
+> guard, and any credential change remain unauthorized and undone.** Owner login
+> confirmation is the gate. Record: `apps/al-rifai/docs/RELEASE-CANDIDATE-20261028.md`.
+
 > **Release candidate prepared — 2026-10-28 (source pushed, NOT deployed, NOT
 > enabled):** `main` is at `47f7e11` on `origin`; candidate image
 > `local/al-rifai:20261028-unified-auth`
