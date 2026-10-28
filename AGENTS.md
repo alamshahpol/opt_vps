@@ -62,6 +62,13 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **UI release DEPLOYED — 2026-10-28 19:59:** app image
+> `sha256:d405d54f…` (source `8e23fff`, HEAD `77cbcef`) is live; `shadow`
+> unchanged; PostgreSQL/WA untouched; identity and Cash Freeze verified after
+> deploy. Rollback `sha256:2c0833c4…`. Account surface = Cash Portal
+> (password only); `/admin` still unreachable in shadow; `on` not approved.
+> Decision note: `apps/al-rifai/docs/DECISION-2026-10-28-UI-RELEASE.md`.
+
 > **UI redesign — 2026-10-28 (source only, NOT deployed):** shared workspace
 > design system (`app/workspace.css`, `PlatformPage` primitives) and responsive
 > passes over dashboard, employees, transactions, admin, cash and vessel. Browser

@@ -1,5 +1,31 @@
 # Next-Session Handoff — Updated After Session 3
 
+## UI RELEASE DEPLOYED — 2026-10-28 19:59 (+01:00)
+
+Image `sha256:d405d54f12001024b0e371edb72f1b93b62228d0c70ec6ed77b64e2121d6bdab`
+(source `8e23fff`, HEAD `77cbcef`) deployed to the app service only.
+`ALRIFAI_UNIFIED_AUTH_MODE` remains `shadow`; PostgreSQL and both WhatsApp
+containers were not restarted (uptimes unbroken).
+
+Verified after deploy: `/` and `/signup` 200, `/dashboard` 401 + Basic challenge,
+`/cash` 200 with a live login endpoint, `/vessel-register` 200, `/employees`
+renders with BDT totals (**Dipongkar BDT 40,306.00**), zero horizontal overflow at
+1440/768/390, identity and freeze unchanged (1 user, fingerprint `e4d99a36…`,
+30 sessions, 0 current postings, ledger 31). The two Cash layout fixes are present
+in the deployed CSS bundle (`abd498c982318dd2.css`).
+
+Safety net (not restored): `pre-ui-deploy-20261028-1958.dump`
+(`b84392f5…`). Rollback images: `sha256:2c0833c4…` and `sha256:52105520…`.
+
+**Account surface:** Cash Portal profile/password (username rename unsupported,
+session revocation not yet on that path). Admin Panel remains unreachable in
+`shadow`. Decision and revisit trigger:
+`apps/al-rifai/docs/DECISION-2026-10-28-UI-RELEASE.md`.
+
+**Next increment (not started, awaiting deploy-report acceptance):**
+session-revocation parity on the Cash Portal password endpoint, reusing the
+existing `otherSessionsRevoked` implementation, shipped as its own image.
+
 ## RESPONSIVE UI/UX REDESIGN — 2026-10-28 (source only; NOT deployed)
 
 Full responsive pass over the public site and every workspace page.
