@@ -62,6 +62,16 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **Release candidate prepared — 2026-10-28 (source pushed, NOT deployed, NOT
+> enabled):** `main` is at `47f7e11` on `origin`; candidate image
+> `local/al-rifai:20261028-unified-auth`
+> `sha256:52105520…` was built from it and **is not in use** — `compose.yaml` still
+> pins `sha256:5f3e2aad…` and no container was recreated. Pre-change backup
+> `pre-unified-auth-20261028.dump` (`b1f8c8fa…`) restore-verified. Identity unchanged
+> (single `Admin` row, fingerprint `e4d99a36…`). Migration `0033` rehearsed twice,
+> including guard-trigger and rollback, and remains **unapplied**. Record:
+> `apps/al-rifai/docs/RELEASE-CANDIDATE-20261028.md`.
+
 > **Unified Super Admin authentication — 2026-10-28 (source only, NOT deployed,
 > NOT enabled):** the Owner's existing Cash Portal credential is now the unified
 > identity in source. Added `/login`, `POST /api/auth/*`, `/admin` (server-gated

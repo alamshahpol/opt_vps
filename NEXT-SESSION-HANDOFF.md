@@ -1,5 +1,42 @@
 # Next-Session Handoff — Updated After Session 3
 
+## UNIFIED AUTH FINAL VERIFICATION — 2026-10-28 (release candidate prepared, NOT deployed)
+
+Owner-authorized final verification and release preparation. **No production
+migration, deployment, restart, mode change or credential change occurred.**
+
+- **Source pushed:** `git push origin main` → `433b1ed..47f7e11` (fast-forward).
+  Local and remote both at `47f7e11`; working tree clean; secret scan of the pushed
+  range found no credential/token/key material.
+- **Candidate image:** `local/al-rifai:20261028-unified-auth`,
+  digest `sha256:52105520fa0e288a05955bdac9ea7c12daed09f5304d3a3ab6472fc5b8139a97`,
+  built from `47f7e11`. Production image `sha256:5f3e2aad…` remains pinned in
+  `compose.yaml` and `al-rifai-app-1` was not recreated.
+- **Backup:** `/var/lib/vps/al-rifai/backups/pre-unified-auth-20261028.dump`,
+  sha256 `b1f8c8fa9f5061f896ba7e00ed2245cb60e269a93b85be73e7b7f185bc309792`,
+  restore rehearsed successfully into a throwaway Postgres 16.
+- **Identity re-verified (read-only, Cash role, read-only transaction):** one
+  account, id `81a73b32…c79`, `Admin`, ADMIN, active, version 2, 24 sessions,
+  fingerprint `e4d99a36533187eecd5f9d4f515f7ca3` — identical to the baseline, before
+  and after every rehearsal. `ALRIFAI_CASH_SUPER_ADMIN_IDS` holds exactly that id;
+  no duplicate or conflicting Super Admin identity.
+- **Tests:** 157 tests → 156 pass / 0 fail / 1 pre-existing skip; `workflows`,
+  `source-register`, `phase1-unit` pass; typecheck, ESLint (0/0) and
+  `next build --webpack` pass; the Docker image build re-runs typecheck/lint/build.
+- **Migration 0033 rehearsal:** applies twice idempotently, changes no user/session/
+  audit row and no hash; guard trigger blocks demoting/deactivating/deleting the
+  final active ADMIN and permits everything legitimate; documented rollback ladder
+  restores the pre-migration schema, grants and data. **Still unapplied.**
+- **Runtime rehearsal:** candidate image against a throwaway clone — 36/36 checks
+  pass (login, cookie name, `/admin` gate, no self-escalation, `workspace.admin`
+  refusal, last-admin protection, audit read after 0033, legacy Basic fallback,
+  logout, `shadow` and `off` behaviour). Rehearsal containers/networks removed.
+- Full record, exact deployment/rollback sequence and remaining approvals:
+  `apps/al-rifai/docs/RELEASE-CANDIDATE-20261028.md`.
+
+Next session starts from `47f7e11` + the release-candidate record; the five Owner
+approvals in §7 of that record are the gate to any production step.
+
 ## UNIFIED SUPER ADMIN AUTHENTICATION — 2026-10-28 (source only, NOT deployed)
 
 Owner directive: the existing working Cash Portal username/password is the
