@@ -86,11 +86,15 @@ test('the employee instruction total is rendered through fmtBDT', () => {
 
 test('password changes revoke the other sessions but keep the caller signed in', () => {
   const auth = source('lib/unified-auth.ts');
-  assert.match(auth, /DELETE FROM public\.cash_portal_sessions[\s\S]*?id<>\$2/);
+  const portal = source('lib/cash-portal.ts');
+  // One revocation implementation, shared by every password-change path.
+  assert.match(portal, /export async function revokeOtherSessions/);
+  assert.match(portal, /DELETE FROM public\.cash_portal_sessions[\s\S]*?id<>\$2/);
+  assert.match(portal, /keepToken\?hashToken\(keepToken\):''/);
+  assert.match(auth, /revokeOtherSessions\(row\.id, currentToken\)/);
   assert.match(auth, /otherSessionsRevoked/);
   assert.match(auth, /PASSWORD_UNCHANGED/);
-  // The caller's own token is preserved while every other row is removed.
-  assert.match(auth, /currentToken \? hashToken\(currentToken\) : ''/);
+  assert.doesNotMatch(auth, /DELETE FROM public\.cash_portal_sessions/, 'no duplicated SQL');
   const route = source('app/api/auth/[...path]/route.ts');
   assert.match(route, /changeOwnPassword\(identity, body, token\)/);
 });

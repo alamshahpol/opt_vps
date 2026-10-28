@@ -142,3 +142,43 @@ exception was implemented.**
 `local/al-rifai:20261028-ui-redesign`
 `sha256:d405d54f12001024b0e371edb72f1b93b62228d0c70ec6ed77b64e2121d6bdab`
 (source `8e23fff` + verification fixes). Not deployed.
+
+## 12. Session-revocation parity on the Cash Portal password endpoint (2026-10-28)
+
+A password change made from the Cash Portal now revokes every other session for
+the account while keeping the caller signed in — the behaviour the Admin/unified
+path already had.
+
+**Implementation (one shared implementation, no new logic).**
+`revokeOtherSessions(userId, keepToken)` moved into `lib/cash-portal.ts` (the
+session-store owner) and is now called by both paths:
+
+* `lib/unified-auth.ts` `changeOwnPassword` — unchanged behaviour, now calls the helper;
+* `app/api/cash/[...path]/route.ts` password handler — calls the helper with the
+  caller's own `result.token` after the password write.
+
+The handler audits `{surface:"cash", otherSessionsRevoked}` and returns the count.
+Nothing else changed: current-password check, CSRF (`auth(request, method !== "GET")`),
+Origin guard, 12+ policy, confirmation and cookie attributes are untouched, and a
+failed current-password check returns before any write or revocation.
+
+**Behavioural verification (real server, disposable clone).** 16/16 checks:
+
+| Case | Result |
+|---|---|
+| (ii) three sessions, wrong current password | 400 `CURRENT_PASSWORD_INVALID`, **no** session revoked, password unchanged |
+| (i) change from one of several sessions | 200, `otherSessionsRevoked` equals the other live sessions, all others 401, caller 200 |
+| (i) new password works / old password rejected | 200 / 401 |
+| (iii) unified `/api/auth/password` | 200, same count semantics, others 401, caller 200 |
+| Auditing | `PASSWORD_CHANGED` carries `surface:"cash"` and the revoked count |
+
+Static guards added in `tests/cash-password-revocation.mjs` (one implementation,
+write-after-verify ordering, audit field, unchanged guards/cookie).
+
+**Suite:** 177 tests → 176 pass / 0 fail / 1 pre-existing skip; typecheck, ESLint
+0/0, `next build` and the image build pass. Full responsive sweep on the new image:
+**60/60** (12 pages × 360/390/768/1280/1440). Cash Portal authenticated UI verified
+at 360, 390, 768, 1280 and 1440 with zero overflow.
+
+**Candidate:** `local/al-rifai:20261028-session-revocation`
+`sha256:946635bd3ba7e17c712d7ff4c96e6e1c93601323501fcc947b194306c0dcff96` — not deployed.

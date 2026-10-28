@@ -100,4 +100,22 @@ export async function createSession(request:Request,row:UserRow){
 export async function findUser(username:string){const result=await pool().query<UserRow>("SELECT * FROM public.cash_portal_users WHERE lower(username)=lower($1) AND active=true",[username]);return result.rows[0]??null;}
 export async function userById(id:string){const result=await pool().query<UserRow>("SELECT * FROM public.cash_portal_users WHERE id=$1",[id]);return result.rows[0]??null;}
 export async function audit(actor:string|null,target:string|null,action:string,details:unknown){await pool().query("INSERT INTO public.cash_portal_audit(id,actor_id,target_id,action,details) VALUES($1,$2,$3,$4,$5)",[digest(`${actor??"system"}:${target??"none"}:${action}:${Date.now()}:${randomBytes(8).toString("hex")}`),actor,target,action,JSON.stringify(details??{})]);}
+/**
+ * Revokes every session for an account except the caller's own token and returns
+ * how many were removed. One implementation shared by the Cash Portal and the
+ * unified/Admin password-change paths; when no token is known (defensive path)
+ * every session is revoked.
+ */
+export async function revokeOtherSessions(userId:string,keepToken:string|null|undefined){
+ const revoked=await pool().query<{n:number}>(
+  `WITH gone AS (
+     DELETE FROM public.cash_portal_sessions
+     WHERE user_id=$1 AND ($2='' OR id<>$2)
+     RETURNING 1
+   ) SELECT count(*)::int AS n FROM gone`,
+  [userId,keepToken?hashToken(keepToken):''],
+ );
+ return Number(revoked.rows[0]?.n??0);
+}
+
 export function database(){return pool();}

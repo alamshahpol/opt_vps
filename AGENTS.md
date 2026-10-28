@@ -62,6 +62,13 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **Session-revocation parity — 2026-10-28 (source only, NOT deployed):** the Cash
+> Portal password endpoint now revokes other sessions via the shared
+> `revokeOtherSessions` helper (same implementation as the unified/Admin path),
+> audits the count and keeps the caller signed in. Candidate
+> `sha256:946635bd…` built, **not deployed**; production stays `sha256:d405d54f…`
+> in `shadow`.
+
 > **UI release DEPLOYED — 2026-10-28 19:59:** app image
 > `sha256:d405d54f…` (source `8e23fff`, HEAD `77cbcef`) is live; `shadow`
 > unchanged; PostgreSQL/WA untouched; identity and Cash Freeze verified after

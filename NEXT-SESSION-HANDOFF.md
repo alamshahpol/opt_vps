@@ -22,9 +22,12 @@ session revocation not yet on that path). Admin Panel remains unreachable in
 `shadow`. Decision and revisit trigger:
 `apps/al-rifai/docs/DECISION-2026-10-28-UI-RELEASE.md`.
 
-**Next increment (not started, awaiting deploy-report acceptance):**
-session-revocation parity on the Cash Portal password endpoint, reusing the
-existing `otherSessionsRevoked` implementation, shipped as its own image.
+**Next increment — READY, not deployed:** session-revocation parity on the Cash
+Portal password endpoint. `revokeOtherSessions` now lives in `lib/cash-portal.ts`
+as the single implementation used by both the Cash Portal and unified/Admin paths;
+the Cash handler audits the revoked count and keeps the caller's session. 16/16
+behavioural checks, 177 tests (176 pass / 1 skip), 60/60 responsive sweep.
+Candidate `sha256:946635bd…` awaits deployment acceptance.
 
 ## RESPONSIVE UI/UX REDESIGN — 2026-10-28 (source only; NOT deployed)
 

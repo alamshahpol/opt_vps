@@ -25,6 +25,7 @@ import {
   hashToken,
   publicUser,
   refreshCsrf,
+  revokeOtherSessions,
   userById,
   verifyPassword,
 } from './cash-portal';
@@ -204,17 +205,8 @@ export async function changeOwnPassword(
     [row.id, encoded],
   );
   // Credential change revokes every other session for this account. The caller's
-  // own session survives so the change cannot lock the account out mid-action;
-  // when no token is known (defensive path) all sessions are revoked.
-  const revoked = await database().query<{n: number}>(
-    `WITH gone AS (
-       DELETE FROM public.cash_portal_sessions
-       WHERE user_id=$1 AND ($2='' OR id<>$2)
-       RETURNING 1
-     ) SELECT count(*)::int AS n FROM gone`,
-    [row.id, currentToken ? hashToken(currentToken) : ''],
-  );
-  const otherSessionsRevoked = Number(revoked.rows[0]?.n ?? 0);
+  // own session survives so the change cannot lock the account out mid-action.
+  const otherSessionsRevoked = await revokeOtherSessions(row.id, currentToken);
   await audit(row.id, row.id, 'PASSWORD_CHANGED', {surface: 'unified', otherSessionsRevoked});
   return {otherSessionsRevoked};
 }

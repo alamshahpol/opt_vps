@@ -1,5 +1,5 @@
 import {NextRequest} from "next/server";
-import {auth,audit,bodyOptional,bodyString,CashPortalError,clearCookie,clearLoginFailures,createSession,cookieHeader,database,findUser,hashPassword,hashToken,json,loginRateLimited,noStoreHeaders,noteLoginFailure,publicUser,refreshCsrf,requireOrigin,requireCashSuperAdmin,verifyPassword,userById,isCashSuperAdmin} from "@/lib/cash-portal";
+import {auth,audit,bodyOptional,bodyString,CashPortalError,clearCookie,clearLoginFailures,createSession,cookieHeader,database,findUser,hashPassword,hashToken,json,loginRateLimited,noStoreHeaders,noteLoginFailure,publicUser,refreshCsrf,requireOrigin,requireCashSuperAdmin,verifyPassword,userById,isCashSuperAdmin,revokeOtherSessions} from "@/lib/cash-portal";
 import {assertCanCreateUser,assertCanManageUser,assertCanResetPassword,CashUserPolicyError} from "@/lib/cash-user-policy";
 import {assertNotRemovingLastSuperAdmin,UnifiedAuthError,validateCapabilityRequest} from "@/lib/unified-auth-policy";
 import {validateSubmission} from "@/lib/cash-submission";
@@ -108,8 +108,13 @@ async function handle(request:NextRequest,segments:string[]){
   const row=await userById(result.user.id);if(!row||!(await verifyPassword(current,row.password_hash)))return reply({error:"CURRENT_PASSWORD_INVALID"},400);
   if(next.length<12||Buffer.byteLength(next)>256)return reply({error:"PASSWORD_POLICY"},400);
   if(next!==confirm)return reply({error:"PASSWORD_CONFIRMATION_MISMATCH"},400);
-  const encoded=await hashPassword(next);await database().query("UPDATE public.cash_portal_users SET password_hash=$2,must_change_password=false,password_changed_at=now(),version=version+1 WHERE id=$1",[row.id,encoded]);await audit(row.id,row.id,"PASSWORD_CHANGED",{});
-  const fresh=await userById(row.id);return reply({user:publicUser(fresh!)});
+  const encoded=await hashPassword(next);await database().query("UPDATE public.cash_portal_users SET password_hash=$2,must_change_password=false,password_changed_at=now(),version=version+1 WHERE id=$1",[row.id,encoded]);
+  // Same revocation implementation as the unified/Admin path: every other session
+  // for this account is removed, the caller's own session stays valid, and the
+  // count is recorded in the audit row.
+  const otherSessionsRevoked=await revokeOtherSessions(row.id,result.token);
+  await audit(row.id,row.id,"PASSWORD_CHANGED",{surface:"cash",otherSessionsRevoked});
+  const fresh=await userById(row.id);return reply({user:publicUser(fresh!),otherSessionsRevoked});
  }
  if(action==="users"&&request.method==="GET"){requireAdmin(result.user);const rows=await database().query<Row>("SELECT id,username,role,display_name AS \"displayName\",email,mobile,whatsapp_number AS \"whatsappNumber\",must_change_password AS \"mustChangePassword\",active,last_seen_at AS \"lastSeenAt\",created_at AS \"createdAt\",to_jsonb(u)->'capabilities' AS capabilities FROM public.cash_portal_users u ORDER BY lower(username)");return reply({users:rows.rows});}
  if(action==="users"&&request.method==="POST"){requireAdmin(result.user);const body=await readBody(request),username=cleanUsername(body.username),password=typeof body.password==="string"?body.password:"",displayName=bodyString(body.displayName,150);if(!username||!displayName||password.length<12||Buffer.byteLength(password)>256)return reply({error:"USER_FIELDS_INVALID"},400);const requestedRole=body.role==="ADMIN"?"ADMIN":"USER";policy(()=>assertCanCreateUser(result.user,requestedRole,isCashSuperAdmin(result.user)));const id=hashToken(`cash-user:${username.toLowerCase()}`);const encoded=await hashPassword(password);try{await database().query("INSERT INTO public.cash_portal_users(id,username,password_hash,role,display_name,email,mobile,whatsapp_number,must_change_password,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,true,$9)",[id,username,encoded,requestedRole,displayName,bodyOptional(body.email,320),bodyOptional(body.mobile,50),bodyOptional(body.whatsappNumber,50),result.user.id]);}catch(e){if((e as {code?:string}).code==="23505")return reply({error:"USERNAME_EXISTS"},409);throw e;}await audit(result.user.id,id,"USER_CREATED",{role:requestedRole});return reply({ok:true,id},201);}
