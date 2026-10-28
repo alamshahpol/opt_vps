@@ -345,3 +345,48 @@ verified panel without a session; `/cash` 200; health ok; 1 user / 26 sessions
 
 **Remaining.** Owner browser confirmation of the sign-in panel, then a separate
 explicit approval for `on` mode. The `validator` guard is unchanged.
+
+## 10. Second incident and repair — shadow suppressed the Basic challenge (2026-10-28, deployed)
+
+**Symptom.** After the loop repair the Owner signed in and saw the verified panel,
+but clicking *Dashboard* (Cash sidebar) or *Open workspace* returned to the same
+panel. Finite redirects, but the workspace was unreachable by click.
+
+**Root cause.** `proxy.ts` answered *every* protected document navigation with
+`302 → /login` for any mode other than `off`. That replaced the `401 +
+WWW-Authenticate` challenge, so the browser never offered the only credential
+that can open the workspace in shadow mode.
+
+| Request | Before | After |
+|---|---|---|
+| `GET /dashboard` (navigation) | `302 /login?next=%2Fdashboard` | `401` + `WWW-Authenticate` |
+| `GET /dashboard` (non-navigation) | `401` + challenge | unchanged |
+| `GET /dashboard` + legacy Basic | `302` (never usable) | **200** |
+
+**Fix — commit `a32c9ef`.** The `/login` redirect moved inside the
+`mode === "on"` branch; `shadow` falls through to the original fail-closed `401`
+challenge. `on` and `off` behave exactly as before. Tests: the shadow model now
+asserts a challenge with no `Location`, and the integration test asserts the
+redirect lives inside the `on` branch and that the challenge is the final
+fallback.
+
+**Validation.** 167 tests → 166 pass / 0 fail / 1 pre-existing skip; typecheck,
+ESLint 0/0, `next build` pass; isolated clone with the new image **13/13**
+(shadow + cookie `/dashboard` → 401 challenge; shadow + Basic `/dashboard` → 200;
+`/admin` + Basic → 307 `/dashboard`; `/login` 200; `off` unchanged; `on`
+307 → 200; Cash portal and Cash login healthy).
+
+**Deployment.** Image `sha256:2c0833c4860a2a3ee6b23a87d937622ad628f2419dd6e7e1ae2c9ab6fb162d7f`
+(source `a32c9ef`); only the app service recreated; mode stays `shadow`; no
+migration; PostgreSQL and WhatsApp untouched. Rollback images
+`sha256:960ee047…` and `sha256:52105520…` retained.
+
+**Production after deploy.** `/dashboard` and `/admin` → `401` + Basic challenge;
+`/dashboard` with the legacy credential → 200; `/admin` with it → `307
+/dashboard`; `/api/core` 200 with and 401 without; `/login` 200 (with and without
+an invalid cookie); `/cash` 200; health ok; no error lines. Identity: 1 user,
+fingerprint `e4d99a36…`, version 2, 29 sessions (7 unexpired), 38 audit rows,
+ledger 31, 0 current postings.
+
+**Remaining.** Owner click-through with the existing private entry credential,
+then a separate explicit approval for `on` mode.

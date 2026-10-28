@@ -65,12 +65,12 @@ wins.
 > **Shadow redirect-loop repair — 2026-10-28 (deployed, `shadow` retained):** the
 > 2026-10-28 `ERR_TOO_MANY_REDIRECTS` defect (a signed-in visitor was forwarded
 > from `/login` to `/dashboard` while shadow refused to authorise it) is fixed in
-> `cc10ed8` — `signedInRedirectTarget()` forwards only in `on` mode and shadow now
-> reports “credential verified” instead of navigating. Deployed image
-> `sha256:960ee047…` (previous `sha256:52105520…` retained for rollback);
-> `ALRIFAI_UNIFIED_AUTH_MODE=shadow` unchanged; identity (1 `Admin` row,
-> fingerprint `e4d99a36…`, 26 sessions) and Cash Freeze (0 current postings)
-> preserved. **`on` mode still NOT authorized.**
+> `cc10ed8`. A second shadow defect — browser navigations answered with a redirect
+> instead of the `401` Basic challenge, which made every protected page
+> unreachable by click — is fixed in `a32c9ef`: the `/login` redirect now applies
+> only in `on` mode. Deployed image `sha256:2c0833c4…`; `shadow` unchanged;
+> identity (1 `Admin` row, fingerprint `e4d99a36…`) and Cash Freeze (0 current
+> postings) preserved. **`on` mode still NOT authorized.**
 
 > **Production activation — 2026-10-28 (stages 1–3 done; `shadow` live; `on` NOT
 > enabled):** Owner-authorized `0033` is applied (ledger 31 rows) and the verified

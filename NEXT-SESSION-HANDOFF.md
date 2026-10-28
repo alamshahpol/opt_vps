@@ -1,5 +1,43 @@
 # Next-Session Handoff — Updated After Session 3
 
+## SHADOW CHALLENGE REPAIR — 2026-10-28 (deployed, `shadow` retained)
+
+**Second shadow defect, found by the Owner's click-through.** After the loop fix
+the Owner signed in successfully (verified panel) but every protected link
+dead-ended on `/login`. Measured: browser navigation to `/dashboard` returned
+`302 → /login` with **no** `WWW-Authenticate`, while a non-navigation request
+returned the correct `401` challenge. Shadow therefore suppressed the only
+prompt that can supply the legacy credential, making the whole workspace
+unreachable by click (Cash sidebar “Dashboard” and the panel's “Open workspace”).
+
+**Fix (`a32c9ef`).** In `proxy.ts` the `/login` redirect now lives **inside** the
+`mode === "on"` branch. In `shadow` the response falls through to the original
+`401` + `WWW-Authenticate` (identical to `off`), so the browser prompts and the
+workspace opens. Tests model the challenge (`tests/unified-auth-shadow-loop.mjs`)
+and assert the branch ordering.
+
+**Validation.** 167 tests → 166 pass / 0 fail / 1 pre-existing skip; typecheck,
+ESLint 0/0, `next build` pass; isolated clone with the new image **13/13**
+(shadow+cookie `/dashboard` 401+challenge, shadow+Basic `/dashboard` 200,
+`/admin` 307→`/dashboard`, `/login` 200, `off` unchanged, `on` 307→200, Cash
+200).
+
+**Deployment.** Image `sha256:2c0833c4860a2a3ee6b23a87d937622ad628f2419dd6e7e1ae2c9ab6fb162d7f`
+(source `a32c9ef`); only `al-rifai-app-1` recreated; mode stays `shadow`; no
+migration; PostgreSQL and WhatsApp untouched. Rollback images:
+`sha256:960ee047…` (loop fix) and `sha256:52105520…` (pre-repair candidate).
+
+**Production after deploy.** `/dashboard` and `/admin` → `401` + Basic challenge;
+`/dashboard` with the legacy credential → **200**; `/admin` with it →
+`307 /dashboard`; `/login` 200 with or without an invalid cookie; `/cash` 200;
+health ok; no error lines. Identity: 1 user, fingerprint `e4d99a36…`, version 2,
+29 sessions (7 unexpired), 38 audit rows, ledger 31, 0 current postings.
+
+**Awaiting the Owner:** open `https://app.al-rifai.iamazim.com/dashboard` (or
+click Dashboard from Cash) — the browser should now ask for the private entry
+username/password; enter the existing `validator` credential and the workspace
+opens. `on` mode still requires a separate explicit authorization.
+
 ## SHADOW REDIRECT-LOOP REPAIR — 2026-10-28 (deployed, `shadow` retained)
 
 **Incident.** The Owner opened `/login` and the browser reported
