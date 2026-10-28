@@ -51,7 +51,7 @@ export default function InsightsView(){
   const s=escort.data?.summary;
   const statusData=s?[{name:'draft',value:s.draft,fill:'var(--color-draft)'},{name:'confirmed',value:s.confirmed,fill:'var(--color-confirmed)'},{name:'review',value:s.review,fill:'var(--color-review)'}]:[];
 
-  return <div className="flex flex-col gap-4">
+  return <div className="wx-page">
     {ops.data&&<PageNotice notice={ops.data.notice} sourceLabel={ops.data.sourceLabel} checkedAt={ops.data.checkedAt}/>}
 
     <div className="flex flex-wrap items-end gap-2 rounded-md border p-2">

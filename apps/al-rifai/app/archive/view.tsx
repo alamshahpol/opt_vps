@@ -21,7 +21,7 @@ export default function ArchiveView(){
 
   const exportNote='Historical provenance retained: source label, date and IDs are preserved; no historical record is rewritten by these screens.';
 
-  return <div className="flex flex-col gap-4">
+  return <div className="wx-page">
     <Unavailable compact reason={exportNote}/>
 
     <Tabs defaultValue="cash">

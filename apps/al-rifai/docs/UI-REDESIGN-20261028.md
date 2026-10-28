@@ -79,3 +79,66 @@ overflow**, measured as `scrollWidth − clientWidth ≤ 1`.
    cookie requires a secure origin). Cash flows were functionally verified earlier.
 5. Insights, Income & Expenditure, Archive and Sources & Review received the shared
    primitives but not a bespoke layout pass.
+
+## 11. Final pre-release verification (2026-10-28, later pass)
+
+### Responsive scope completed
+
+The four pages that were previously only "primitive adoption" are now measured:
+
+| Page | Result |
+|---|---|
+| Operational Insights | 5/5 widths, 0 overflow (chart cards can shrink; KPI rail stacks) |
+| Income & Expenditure | 5/5 widths, 0 overflow |
+| Archive | 5/5 widths, 0 overflow |
+| Sources & Review | 5/5 widths, 0 overflow |
+
+Full sweep: **12 pages × 5 widths (360/390/768/1280/1440) = 60/60, zero
+horizontal overflow** (`scrollWidth − clientWidth ≤ 1`).
+
+Defects found and fixed during this pass:
+
+* Insights/Income: Recharts cards kept a 505px intrinsic width — cards and
+  `ResponsiveContainer` are now shrinkable (`min-width: 0`).
+* Archive/Sources: page roots now use the shared `.wx-page` scaffold.
+* Cash at 768px: the workspace kept its 226px desktop offset after the sidebar
+  became static (+190px overflow); offset reset.
+* Cash at 390px: the portal's own ≤650px bottom-bar rules squeezed and clipped
+  navigation labels; the ≤900px block now overrides them with readable pills.
+
+### Authenticated Cash Portal (HTTPS, disposable credentials)
+
+Isolated stack with a self-signed certificate in front of the app, a disposable
+password on the cloned Owner row (never production), and a session issued by the
+app itself:
+
+| Check | Result |
+|---|---|
+| `POST /api/cash/login` | 200 |
+| `__Host-alrifai_cash` cookie | present, Secure, HttpOnly |
+| Authenticated dashboard | 5 metric cards, 12 navigation links, 4 tabs, 100 table rows |
+| Source dialog | opens ("Tanvir Islam-Emon"), 520px, no overflow |
+| Employee statements tab | 35 rows |
+| Layout 360/390/768/1280/1440 | 5/5 pass, 0 overflow |
+| Amount wording | Instruction / Posted / Review all present; Posted BDT 0.00 |
+
+### Account management assessment
+
+| Capability | Cash Portal | Admin Panel | Verdict |
+|---|---|---|---|
+| Change password | Yes — current password, 12+ policy, confirmation, audit | Yes (same policy + session revocation) | **Reuse the Cash Portal** |
+| Change username | **No** — the profile username field is `disabled` | Yes | Only reachable in `on` mode |
+| Revoke other sessions on password change | **No** | Yes (`otherSessionsRevoked`) | Gap in the Cash Portal path |
+| Access in `shadow` mode | Yes (session) | **No** — Basic identity is never the Super Admin → `307 /dashboard` | — |
+
+Recommendation: keep the Cash Portal as the account-management surface for the
+password, and add session-revocation parity to its password endpoint (small,
+self-contained change). Username changes should wait for `on` mode or a
+separately approved, narrowly scoped `/account` route. **No authorization
+exception was implemented.**
+
+### Final candidate
+
+`local/al-rifai:20261028-ui-redesign`
+`sha256:d405d54f12001024b0e371edb72f1b93b62228d0c70ec6ed77b64e2121d6bdab`
+(source `8e23fff` + verification fixes). Not deployed.

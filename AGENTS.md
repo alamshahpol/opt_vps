@@ -65,8 +65,9 @@ wins.
 > **UI redesign — 2026-10-28 (source only, NOT deployed):** shared workspace
 > design system (`app/workspace.css`, `PlatformPage` primitives) and responsive
 > passes over dashboard, employees, transactions, admin, cash and vessel. Browser
-> verified 40/40 (8 pages × 360/390/768/1280/1440, zero overflow). Candidate
-> `sha256:dbc9efe0…` built, **not deployed**; production stays `sha256:2c0833c4…`
+> verified 60/60 (12 pages × 360/390/768/1280/1440, zero overflow) plus an
+> authenticated Cash Portal HTTPS run. Candidate `sha256:d405d54f…` built, **not
+> deployed**; production stays `sha256:2c0833c4…`
 > in `shadow`. Known: `/admin` is unreachable in shadow mode. Record:
 > `apps/al-rifai/docs/UI-REDESIGN-20261028.md`.
 

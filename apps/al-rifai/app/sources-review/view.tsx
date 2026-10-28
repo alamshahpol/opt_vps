@@ -71,7 +71,7 @@ export default function SourcesReviewView(){
   const draftRows=(escortRows.data?.rows??[]).filter(r=>r.status==='DRAFT');
   const filtered=useMemo(()=>reviewRows.filter(r=>!q||[r.clientName,r.motherVessel,r.lighterVessel,r.escortName,r.id].join(' ').toLowerCase().includes(q.toLowerCase())),[reviewRows,q]);
 
-  return <div className="flex flex-col gap-4">
+  return <div className="wx-page">
     {escort.data&&<KpiGrid>
       <KpiCard label="Review Queue" tone="risk" value={escort.data.summary.actionableReview} hint="Actionable vessel review rows"/>
       <KpiCard label="Duplicate Alerts" tone="risk" value={escort.data.summary.duplicateReview} hint="Potential duplicate candidates"/>

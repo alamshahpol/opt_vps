@@ -29,7 +29,7 @@ export default function IncomeExpenditureView(){
   },[rows]);
   const totalExpense=rows.reduce((n,r)=>n+r.amountCents,0);
 
-  return <div className="flex flex-col gap-4">
+  return <div className="wx-page">
     {ops.data&&<PageNotice notice={ops.data.notice} sourceLabel={ops.data.sourceLabel} checkedAt={ops.data.checkedAt}/>}
     <Unavailable title="Income and expense limits" reason="Verified data covers outgoing Cash payment instructions to employees only — no verified income dataset or confirmed expense receipts exist yet. All figures below are instruction amounts, not posted ledger values."/>
 

@@ -18,8 +18,10 @@ responsive account table; all guards untouched), Cash (mobile navigation strip,
 stacked metrics), Vessel Register (existing responsive shell, palette aligned),
 Insights/Income/Archive/Sources (shared primitives).
 
-**Verification** — headless Chromium over CDP: 8 pages × 5 widths (360/390/768/
-1280/1440) = **40/40 with zero horizontal overflow**; mobile drawer opens with
+**Verification** — headless Chromium over CDP: 12 pages × 5 widths (360/390/768/
+1280/1440) = **60/60 with zero horizontal overflow** (Insights, Income, Archive and
+Sources included after fixing chart min-width, page scaffolding and the Cash 768px
+offset/clipped mobile navigation); mobile drawer opens with
 working links; Admin Panel rendered in an isolated `on` instance (1 account row,
 all account-settings forms present, 0 overflow at 390/768/1440). 173 tests →
 172 pass / 1 skip; typecheck, ESLint 0/0 and `next build` pass. Screenshots and
@@ -30,8 +32,19 @@ the defect list: `apps/al-rifai/docs/UI-REDESIGN-20261028.md`.
 remain available through the Cash portal profile/password cards until `on` is
 approved or a narrow session-authorised `/account` route is authorised.
 
-**Candidate image** — `sha256:dbc9efe0d20d9243430d526f3c362fccff1654ae11a2668504e8618d235622b2`,
-built from `8e23fff` + design polish; **not deployed**. Production remains
+**Authenticated Cash verification** — HTTPS harness with a self-signed cert and a
+disposable password on the cloned Owner row: login 200, `__Host-` cookie present,
+5 metrics / 12 nav links / 4 tabs / 100 rows, source dialog opens, employee tab 35
+rows, 5/5 widths with zero overflow.
+
+**Account management** — the Cash Portal changes the password safely (current
+password, policy, confirmation, audit) but **not the username** (field disabled)
+and does not revoke other sessions; the Admin Panel does both but is unreachable
+in `shadow`. Recommendation: reuse the Cash Portal for the password, add
+revocation parity, defer username rename to `on` or an approved `/account`.
+
+**Candidate image** — `sha256:d405d54f12001024b0e371edb72f1b93b62228d0c70ec6ed77b64e2121d6bdab`,
+built from `8e23fff` + verification fixes; **not deployed**. Production remains
 `sha256:2c0833c4…` in `shadow`.
 
 ## OWNER SUITE — 2026-10-28 (source only; NOT deployed)
