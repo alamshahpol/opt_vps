@@ -1,5 +1,48 @@
 # Next-Session Handoff — Updated After Session 3
 
+## OWNER SUITE — 2026-10-28 (source only; NOT deployed)
+
+Three Owner requests implemented in source, tested and browser-verified. No
+production deployment, migration, credential or authorization-mode change.
+
+**1. Dipongkar payment audit (read-only).** 79 Current-epoch instructions for
+`01880089543`; every stored amount matches its original WhatsApp text (79/79);
+no duplicate source ref, command id, payload hash or same-day/amount pair; no
+postings. True instruction total **BDT 40,306.00**. The reported
+"BDT 4,030,600" was the same figure rendered from minor units without the /100
+conversion in six workspace views. Fixed to `fmtBDT`. Record:
+`apps/al-rifai/docs/DIPONGKAR-AUDIT-20261028.md`.
+
+**2. Account Settings.** `/admin` already provided profile, username change and
+password change with current-password reauthentication, confirmation and audit.
+Added: password changes now revoke **every other session** for the account while
+keeping the caller signed in, the revocation count is audited, and reusing the
+current password is rejected (`PASSWORD_UNCHANGED`). Account id, historical
+records and the single Cash credential store are untouched.
+
+**3. Public website.** `/` and `/signup` are now public on both hosts: a
+responsive corporate homepage (marine survey, security guarding, vessel escort,
+about, contact, footer) with Login/Sign Up at the top right and a mobile drawer.
+`/signup` explains that accounts are provisioned by an administrator and grants
+nothing. The root no longer redirects to `/review` or `/cash`.
+Entry allowlisting uses an exact-root check — adding `'/'` as a rule would have
+matched as a subtree and exposed every path (caught by the entry tests).
+
+**Validation.** 173 tests → 172 pass / 0 fail / 1 pre-existing skip; typecheck,
+ESLint 0/0, `next build` and the Docker image build pass. Headless Chromium
+against an isolated clone: **17/17** (desktop 1440×1000 and mobile 390×844
+screenshots, homepage/signup DOM, no inflated total, Employees table shows
+`BDT 40,106.00` for the filtered Dipongkar view).
+
+**Candidate image.** `sha256:c64d92a13e2aa6a01e94f32e575c8a4c17f600484850baab4f45757288e62aaa`
+(source `b0f4b45` + copy fix). Production still runs `sha256:2c0833c4…` in
+`shadow`; deployment awaits approval.
+
+**Not delivered.** The app-wide responsive/design-system refactor (Phase D) is
+only partially done: the public site is fully responsive, the currency and status
+labels are corrected, but the workspace pages keep their existing layout. A
+structured UI pass remains open.
+
 ## SHADOW CHALLENGE REPAIR — 2026-10-28 (deployed, `shadow` retained)
 
 **Second shadow defect, found by the Owner's click-through.** After the loop fix

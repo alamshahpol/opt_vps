@@ -62,6 +62,14 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **Owner suite — 2026-10-28 (source only, NOT deployed):** public homepage at
+> `/` and `/signup` (no credential, no business data), instruction totals fixed to
+> divide minor units (the Dipongkar "BDT 4,030,600" was a display error; true
+> BDT 40,306.00), and password changes now revoke other sessions. Candidate image
+> `sha256:c64d92a1…` built but **not deployed**; production remains
+> `sha256:2c0833c4…` in `shadow`. Details: `NEXT-SESSION-HANDOFF.md`,
+> `apps/al-rifai/docs/DIPONGKAR-AUDIT-20261028.md`.
+
 > **Shadow redirect-loop repair — 2026-10-28 (deployed, `shadow` retained):** the
 > 2026-10-28 `ERR_TOO_MANY_REDIRECTS` defect (a signed-in visitor was forwarded
 > from `/login` to `/dashboard` while shadow refused to authorise it) is fixed in
