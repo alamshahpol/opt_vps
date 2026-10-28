@@ -17,6 +17,7 @@ export const NAV_ITEMS:NavItem[]=[
   {href:"/archive",label:"Archive",labelBn:"আর্কাইভ",icon:"Archive",description:"Historical messages, cashbook and program history"},
   {href:"/sources-review",label:"Sources & Review",labelBn:"উৎস ও পর্যালোচনা",icon:"ClipboardCheck",description:"Review queue, evidence and verification"},
   {href:"/assistant",label:"Assistant",icon:"Sparkles",description:"Ask anything about verified records"},
+  {href:"/admin",label:"Admin Panel",icon:"ShieldCheck",description:"Accounts, roles, permissions and audit history",restricted:true},
 ];
 
 // Preserved, not deleted: consolidation targets for legacy navigation items.
@@ -28,7 +29,7 @@ export const CONSOLIDATED_LINKS:Record<string,string>={
   "Report assistant":"/assistant",
 };
 
-import {LayoutDashboard,Ship,ArrowLeftRight,Users,ChartLine,Wallet,Archive,ClipboardCheck,Sparkles,type LucideIcon} from 'lucide-react';
+import {LayoutDashboard,Ship,ArrowLeftRight,Users,ChartLine,Wallet,Archive,ClipboardCheck,Sparkles,ShieldCheck,type LucideIcon} from 'lucide-react';
 
 export const NAV_ICONS:Record<string,LucideIcon>={
   LayoutDashboard,
@@ -40,6 +41,7 @@ export const NAV_ICONS:Record<string,LucideIcon>={
   Archive,
   ClipboardCheck,
   Sparkles,
+  ShieldCheck,
 };
 
 export function navItemForPath(pathname:string):NavItem{

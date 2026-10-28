@@ -1,6 +1,7 @@
 import {NextRequest} from "next/server";
 import {auth,audit,bodyOptional,bodyString,CashPortalError,clearCookie,clearLoginFailures,createSession,cookieHeader,database,findUser,hashPassword,hashToken,json,loginRateLimited,noStoreHeaders,noteLoginFailure,publicUser,refreshCsrf,requireOrigin,requireCashSuperAdmin,verifyPassword,userById,isCashSuperAdmin} from "@/lib/cash-portal";
 import {assertCanCreateUser,assertCanManageUser,assertCanResetPassword,CashUserPolicyError} from "@/lib/cash-user-policy";
+import {assertNotRemovingLastSuperAdmin,UnifiedAuthError,validateCapabilityRequest} from "@/lib/unified-auth-policy";
 import {validateSubmission} from "@/lib/cash-submission";
 import {assertCanDecide,ApprovalError,SUBMISSION_SCHEMA_DEPENDENCY} from "@/lib/cash-approval";
 import {CASH_SCOPE_ACCOUNT,CASH_SCOPE_CHATS,cashScopedWhere} from "@/lib/cash-scope";
@@ -12,8 +13,10 @@ function reply(data:unknown,status=200,headers:HeadersInit={}){return json(data,
 async function readBody(request:Request){try{const value=await request.json();return value&&typeof value==="object"?value as Row:{};}catch{throw new CashPortalError("INVALID_JSON",400);}}
 function requireAdmin(user:{role:string}){if(user.role!=="ADMIN")throw new CashPortalError("ADMIN_REQUIRED",403);}
 /** Runs a pure policy guard and maps its denial into the portal error contract. */
-function policy(guard:()=>void){try{guard();}catch(e){if(e instanceof CashUserPolicyError)throw new CashPortalError(e.code,403);throw e;}}
+function policy(guard:()=>void){try{guard();}catch(e){if(e instanceof CashUserPolicyError||e instanceof UnifiedAuthError)throw new CashPortalError(e.code,e.status);throw e;}}
 async function activeAdminCount(){const row=await database().query<{n:number}>("SELECT count(*)::int AS n FROM public.cash_portal_users WHERE role='ADMIN' AND active=true");return Number(row.rows[0]?.n??0);}
+async function activeConfiguredAdminCount(){const ids=(process.env.ALRIFAI_CASH_SUPER_ADMIN_IDS??'').split(',').map(value=>value.trim()).filter(value=>/^[a-f0-9]{64}$/.test(value));if(!ids.length)return 0;const row=await database().query<{n:number}>("SELECT count(*)::int AS n FROM public.cash_portal_users WHERE id=ANY($1::text[]) AND role='ADMIN' AND active=true",[ids]);return Number(row.rows[0]?.n??0);}
+const capabilitiesMigration='db/migration-candidates/0033_unified_auth_sessions.sql';
 function forced(user:{mustChangePassword:boolean}){if(user.mustChangePassword)throw new CashPortalError("PASSWORD_CHANGE_REQUIRED",403);}
 function cleanUsername(value:unknown){const username=bodyString(value,80);return username&&/^[A-Za-z0-9._-]+$/.test(username)?username:undefined;}
 function cleanId(value:unknown){return typeof value==="string"&&/^[a-f0-9]{64}$/.test(value)?value:undefined;}
@@ -108,10 +111,40 @@ async function handle(request:NextRequest,segments:string[]){
   const encoded=await hashPassword(next);await database().query("UPDATE public.cash_portal_users SET password_hash=$2,must_change_password=false,password_changed_at=now(),version=version+1 WHERE id=$1",[row.id,encoded]);await audit(row.id,row.id,"PASSWORD_CHANGED",{});
   const fresh=await userById(row.id);return reply({user:publicUser(fresh!)});
  }
- if(action==="users"&&request.method==="GET"){requireAdmin(result.user);const rows=await database().query<Row>("SELECT id,username,role,display_name AS \"displayName\",email,mobile,whatsapp_number AS \"whatsappNumber\",must_change_password AS \"mustChangePassword\",active,last_seen_at AS \"lastSeenAt\",created_at AS \"createdAt\" FROM public.cash_portal_users ORDER BY lower(username)");return reply({users:rows.rows});}
+ if(action==="users"&&request.method==="GET"){requireAdmin(result.user);const rows=await database().query<Row>("SELECT id,username,role,display_name AS \"displayName\",email,mobile,whatsapp_number AS \"whatsappNumber\",must_change_password AS \"mustChangePassword\",active,last_seen_at AS \"lastSeenAt\",created_at AS \"createdAt\",to_jsonb(u)->'capabilities' AS capabilities FROM public.cash_portal_users u ORDER BY lower(username)");return reply({users:rows.rows});}
  if(action==="users"&&request.method==="POST"){requireAdmin(result.user);const body=await readBody(request),username=cleanUsername(body.username),password=typeof body.password==="string"?body.password:"",displayName=bodyString(body.displayName,150);if(!username||!displayName||password.length<12||Buffer.byteLength(password)>256)return reply({error:"USER_FIELDS_INVALID"},400);const requestedRole=body.role==="ADMIN"?"ADMIN":"USER";policy(()=>assertCanCreateUser(result.user,requestedRole,isCashSuperAdmin(result.user)));const id=hashToken(`cash-user:${username.toLowerCase()}`);const encoded=await hashPassword(password);try{await database().query("INSERT INTO public.cash_portal_users(id,username,password_hash,role,display_name,email,mobile,whatsapp_number,must_change_password,created_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8,true,$9)",[id,username,encoded,requestedRole,displayName,bodyOptional(body.email,320),bodyOptional(body.mobile,50),bodyOptional(body.whatsappNumber,50),result.user.id]);}catch(e){if((e as {code?:string}).code==="23505")return reply({error:"USERNAME_EXISTS"},409);throw e;}await audit(result.user.id,id,"USER_CREATED",{role:requestedRole});return reply({ok:true,id},201);}
  if(action==="users"&&segments[1]&&segments[2]==="password"&&request.method==="POST"){requireAdmin(result.user);const id=cleanId(segments[1]);const body=await readBody(request),next=typeof body.newPassword==="string"?body.newPassword:"";if(!id||next.length<12||Buffer.byteLength(next)>256)return reply({error:"PASSWORD_POLICY"},400);const target=await userById(id);if(!target)return reply({error:"USER_NOT_FOUND"},404);policy(()=>assertCanResetPassword(result.user,{id:target.id,role:target.role,active:target.active},isCashSuperAdmin(result.user)));await database().query("UPDATE public.cash_portal_users SET password_hash=$2,must_change_password=true,password_changed_at=NULL,version=version+1 WHERE id=$1",[id,await hashPassword(next)]);await database().query("DELETE FROM public.cash_portal_sessions WHERE user_id=$1",[id]);await audit(result.user.id,id,"PASSWORD_RESET",{targetRole:target.role});return reply({ok:true});}
- if(action==="users"&&segments[1]&&request.method==="PATCH"){requireAdmin(result.user);const id=cleanId(segments[1]);if(!id)return reply({error:"USER_ID_INVALID"},400);const target=await userById(id);if(!target)return reply({error:"USER_NOT_FOUND"},404);const body=await readBody(request);const displayName=bodyOptional(body.displayName,150),email=bodyOptional(body.email,320),mobile=bodyOptional(body.mobile,50),whatsapp=bodyOptional(body.whatsappNumber,50);if(displayName===null||email===null||mobile===null||whatsapp===null)return reply({error:"PROFILE_FIELD_INVALID"},400);const nextRole=body.role==="ADMIN"||body.role==="USER"?body.role:target.role;const nextActive=typeof body.active==="boolean"?body.active:target.active;const activeAdmins=await activeAdminCount();policy(()=>assertCanManageUser({actor:result.user,target:{id:target.id,role:target.role,active:target.active},nextRole,nextActive,activeAdmins,superAdmin:isCashSuperAdmin(result.user)}));await database().query("UPDATE public.cash_portal_users SET display_name=$2,email=$3,mobile=$4,whatsapp_number=$5,active=$6,role=$7,version=version+1 WHERE id=$1",[id,displayName??target.display_name,email===undefined?target.email:email,mobile===undefined?target.mobile:mobile,whatsapp===undefined?target.whatsapp_number:whatsapp,nextActive,nextRole]);await audit(result.user.id,id,"USER_UPDATED",{roleBefore:target.role,roleAfter:nextRole,activeBefore:target.active,activeAfter:nextActive});return reply({ok:true});}
+ if(action==="users"&&segments[1]&&request.method==="PATCH"){requireAdmin(result.user);const id=cleanId(segments[1]);if(!id)return reply({error:"USER_ID_INVALID"},400);const target=await userById(id);if(!target)return reply({error:"USER_NOT_FOUND"},404);const body=await readBody(request);const displayName=bodyOptional(body.displayName,150),email=bodyOptional(body.email,320),mobile=bodyOptional(body.mobile,50),whatsapp=bodyOptional(body.whatsappNumber,50);if(displayName===null||email===null||mobile===null||whatsapp===null)return reply({error:"PROFILE_FIELD_INVALID"},400);const nextRole=body.role==="ADMIN"||body.role==="USER"?body.role:target.role;const nextActive=typeof body.active==="boolean"?body.active:target.active;const activeAdmins=await activeAdminCount();policy(()=>assertCanManageUser({actor:result.user,target:{id:target.id,role:target.role,active:target.active},nextRole,nextActive,activeAdmins,superAdmin:isCashSuperAdmin(result.user)}));
+  // Configured Super Admin identity is protected beyond the last-ADMIN rule.
+  const configuredAdmins=await activeConfiguredAdminCount();
+  policy(()=>assertNotRemovingLastSuperAdmin({targetId:target.id,targetRole:target.role,targetActive:target.active,nextRole,nextActive,configuredIds:process.env.ALRIFAI_CASH_SUPER_ADMIN_IDS,activeConfiguredAdmins:configuredAdmins}));
+  // Capability grants are Super-Admin-only and additive to the stored role.
+  let capabilities: string[] | null = null;
+  if(body.capabilities!==undefined)policy(()=>{capabilities=validateCapabilityRequest({role:result.user.role,superAdmin:isCashSuperAdmin(result.user)},target.role,body.capabilities);});
+  if(capabilities){
+   // The capability column is created by prepared migration 0033. Until it is
+   // applied the request reports the dependency instead of failing opaquely.
+   try{
+    await database().query("UPDATE public.cash_portal_users SET display_name=$2,email=$3,mobile=$4,whatsapp_number=$5,active=$6,role=$7,capabilities=$8::jsonb,version=version+1 WHERE id=$1",[id,displayName??target.display_name,email===undefined?target.email:email,mobile===undefined?target.mobile:mobile,whatsapp===undefined?target.whatsapp_number:whatsapp,nextActive,nextRole,JSON.stringify(capabilities)]);
+   }catch(error){
+    if((error as {code?:string}).code==="42703"||schemaUnavailable(error))return reply({error:"CAPABILITIES_MIGRATION_REQUIRED",available:false,migration:capabilitiesMigration},503);
+    throw error;
+   }
+  }else{
+   await database().query("UPDATE public.cash_portal_users SET display_name=$2,email=$3,mobile=$4,whatsapp_number=$5,active=$6,role=$7,version=version+1 WHERE id=$1",[id,displayName??target.display_name,email===undefined?target.email:email,mobile===undefined?target.mobile:mobile,whatsapp===undefined?target.whatsapp_number:whatsapp,nextActive,nextRole]);
+  }
+  await audit(result.user.id,id,"USER_UPDATED",{roleBefore:target.role,roleAfter:nextRole,activeBefore:target.active,activeAfter:nextActive,capabilities});return reply({ok:true});}
+ if(action==="audit"&&request.method==="GET"){
+  requireCashSuperAdmin(result.user);
+  const limit=Math.max(1,Math.min(200,Number(request.nextUrl.searchParams.get("limit"))||100));
+  try{
+   const rows=await database().query<Row>("SELECT a.id,a.actor_id,a.target_id,a.action,a.details,a.created_at,actor.username AS actor_username,target.username AS target_username FROM public.cash_portal_audit a LEFT JOIN public.cash_portal_users actor ON actor.id=a.actor_id LEFT JOIN public.cash_portal_users target ON target.id=a.target_id ORDER BY a.created_at DESC,a.id DESC LIMIT $1",[limit]);
+   return reply({rows:rows.rows,limit,readOnly:true});
+  }catch(error){
+   if(schemaUnavailable(error)||(error as {code?:string}).code==="42501")return reply({error:"AUDIT_READ_MIGRATION_REQUIRED",available:false,migration:capabilitiesMigration},503);
+   throw error;
+  }
+ }
  if(action==="summary"&&request.method==="GET"){
   requireCashSuperAdmin(result.user);
   const q=request.nextUrl.searchParams,term=bodyString(q.get("q"),150),method=bodyString(q.get("method"),20),from=bodyString(q.get("from"),10),to=bodyString(q.get("to"),10);

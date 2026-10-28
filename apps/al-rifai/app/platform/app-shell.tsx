@@ -2,7 +2,7 @@
 import {useState,type ReactNode} from 'react';
 import {createElement} from 'react';
 import Link from 'next/link';
-import {usePathname} from 'next/navigation';
+import {usePathname,useRouter} from 'next/navigation';
 import * as Icons from 'lucide-react';
 import type {LucideIcon} from 'lucide-react';
 import {NAV_ITEMS,CONSOLIDATED_LINKS,NAV_ICONS,navItemForPath,type NavItem} from '@/app/platform/nav';
@@ -15,7 +15,7 @@ import {Sheet,SheetContent,SheetHeader,SheetTitle,SheetTrigger} from '@/componen
 import {cn} from '@/lib/utils';
 import type {ChatGPTUser} from '@/app/chatgpt-auth';
 
-export type ShellUser=ChatGPTUser&{admin:boolean};
+export type ShellUser=ChatGPTUser&{admin:boolean;superAdmin?:boolean};
 
 function iconFor(name:string):LucideIcon{
   return NAV_ICONS[name]??Icons.Menu;
@@ -32,12 +32,31 @@ function LegacyLinks(){
   </div>;
 }
 
+function SignOutButton({className}:{className?:string}){
+  const router=useRouter();
+  const [busy,setBusy]=useState(false);
+  async function signOut(){
+    setBusy(true);
+    try{
+      const session=await fetch('/api/auth/session',{cache:'no-store'}).then(r=>r.json()).catch(()=>({}));
+      await fetch('/api/auth/logout',{method:'POST',headers:{'X-CSRF-Token':session?.csrf||''},cache:'no-store'});
+    }catch{
+      // A failed sign-out still returns the user to the sign-in page.
+    }
+    router.replace('/login');
+    router.refresh();
+  }
+  return <Button variant="ghost" size="sm" className={className} onClick={()=>void signOut()} disabled={busy}>
+    <Icons.LogOut className="size-3.5"/>Sign out
+  </Button>;
+}
+
 function SidebarContent({user,collapsed,onToggle,navigateAway}:{user:ShellUser;collapsed:boolean;onToggle:()=>void;navigateAway?:()=>void}){  const pathname=usePathname();
   const [query,setQuery]=useState('');
   const current=navItemForPath(pathname);
-  const visible=NAV_ITEMS.filter((item)=>!query
+  const visible=NAV_ITEMS.filter((item)=>(!item.restricted||user.superAdmin===true)&&(!query
     ||item.label.toLowerCase().includes(query.toLowerCase())
-    ||item.description.toLowerCase().includes(query.toLowerCase()));
+    ||item.description.toLowerCase().includes(query.toLowerCase())));
   const renderItem=(item:NavItem)=>{
     const ItemIcon=iconFor(item.icon);
     const active=current.href===item.href;
@@ -77,6 +96,7 @@ function SidebarContent({user,collapsed,onToggle,navigateAway}:{user:ShellUser;c
           </>
         )}
         <Link href="/cash" className="mt-1 inline-block underline-offset-2 hover:underline">Cash portal ↗</Link>
+        {user.source==='session'&&<SignOutButton className="mt-1 h-7 w-full justify-start px-0 text-xs"/>}
       </div>
     </div>
   );
