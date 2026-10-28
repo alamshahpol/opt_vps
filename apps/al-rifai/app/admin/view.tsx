@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
+import {PageHeader} from '@/app/platform/ui';
 import {Card,CardContent,CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
@@ -183,7 +184,12 @@ export default function AdminView() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="wx-page">
+      <PageHeader
+        eyebrow="Administration"
+        title="Admin panel"
+        description="Accounts, roles and permissions for the private workspace. Every change is enforced server-side and recorded in the Cash audit trail."
+      />
       {error && <p role="alert" className="rounded border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive">{error}</p>}
       {notice && <p role="status" className="rounded border bg-muted p-2 text-sm">{notice}</p>}
 
@@ -347,26 +353,22 @@ export default function AdminView() {
             and the last active administrator is always preserved.
           </CardDescription>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Account</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Access</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead>Last seen</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <CardContent>
+          <div className="wx-table-wrap stackable">
+          <table className="wx-table stackable">
+            <thead>
+              <tr>
+                <th>Account</th><th>Role</th><th>Access</th><th>Permissions</th><th>Last seen</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
               {users.map(user => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="font-medium">{user.username}</div>
-                    <div className="text-xs text-muted-foreground">{user.displayName}</div>
-                  </TableCell>
-                  <TableCell>
+                <tr key={user.id}>
+                  <td data-label="Account">
+                    <div className="strong">{user.username}</div>
+                    <div className="muted">{user.displayName}</div>
+                  </td>
+                  <td data-label="Role">
                     <select
                       className="h-8 rounded-md border bg-background px-2 text-sm"
                       value={user.role}
@@ -376,11 +378,11 @@ export default function AdminView() {
                       <option value="USER">User</option>
                       <option value="ADMIN">Admin</option>
                     </select>
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td data-label="Access">
                     <Badge variant={user.active ? 'secondary' : 'destructive'}>{user.active ? 'Active' : 'Disabled'}</Badge>
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td data-label="Permissions">
                     <div className="flex flex-wrap gap-x-3 gap-y-1">
                       {GRANTABLE.map(capability => (
                         <label key={capability} className="flex items-center gap-1 text-xs">
@@ -393,9 +395,9 @@ export default function AdminView() {
                         </label>
                       ))}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-xs">{when(user.lastSeenAt)}</TableCell>
-                  <TableCell>
+                  </td>
+                  <td data-label="Last seen" className="muted">{when(user.lastSeenAt)}</td>
+                  <td data-label="Action">
                     <div className="flex flex-col gap-1">
                       <Button
                         size="sm"
@@ -409,11 +411,12 @@ export default function AdminView() {
                         Reset password
                       </Button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
+          </div>
           {reset && (
             <form
               className="mt-3 flex flex-wrap items-end gap-2"

@@ -1,14 +1,12 @@
 'use client';
 import {useEffect,useState,type ReactNode} from 'react';
 import Link from 'next/link';
-import {AlertTriangle,Banknote,CircleAlert,Info,Users} from 'lucide-react';
+import {AlertTriangle,Banknote,CircleAlert,Inbox,Info,Users} from 'lucide-react';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
-import {Card,CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
-import {Skeleton} from '@/components/ui/skeleton';
 import {Textarea} from '@/components/ui/textarea';
 import {
   Sheet,SheetContent,SheetDescription,SheetFooter,SheetHeader,SheetTitle,SheetTrigger,
@@ -46,7 +44,7 @@ export function useApi<T>(url:string|null){
   return state;
 }
 
-export function LoadingLines(){return <div className="grid gap-2 py-2">{[0,1,2].map(i=><Skeleton key={i} className="h-9 w-full"/>)}</div>;}
+export function LoadingLines(){return <LoadingSkeleton rows={3}/>;}
 
 export function Unavailable({reason,title='Not available from verified data',compact=false}:{reason:string;title?:string;compact?:boolean}){
   return (
@@ -58,38 +56,117 @@ export function Unavailable({reason,title='Not available from verified data',com
   );
 }
 
-const toneClass=(state:'ok'|'unavailable')=>state==='unavailable'?'text-muted-foreground':'text-foreground';
-
 export function KpiCard({
   label,labelBn,value,valueText,hint,tone,href,
   state='ok',
-}:{label:string;labelBn?:string;value?:number;valueText?:string;hint?:string;tone?:'default'|'cash'|'workforce'|'risk';href?:string;state?:'ok'|'unavailable'}){
+}:{label:string;labelBn?:string;value?:number;valueText?:string;hint?:string;tone?:'default'|'cash'|'workforce'|'risk'|'ok';href?:string;state?:'ok'|'unavailable'}){
   const display=valueText??(value===undefined?null:fmtInt.format(value));
-  const card=(
-    <Card className="min-w-[150px] flex-1">
-      <CardHeader className="pb-1">
-        <CardDescription className="flex items-center justify-between gap-1 text-xs">
-          <span className="truncate">{label}{labelBn&&<span className="ml-1 text-[10px]"> {labelBn}</span>}</span>
-          {tone==='cash'&&<Banknote className="size-3.5 text-muted-foreground" aria-hidden/>}
-          {tone==='workforce'&&<Users className="size-3.5 text-muted-foreground" aria-hidden/>}
-          {tone==='risk'&&<CircleAlert className="size-3.5 text-muted-foreground" aria-hidden/>}
-        </CardDescription>
-        <CardTitle className={'text-xl font-semibold tabular-nums '+toneClass(state)}>
-          {state==='unavailable'||display===null
-            ?<span className="text-sm font-medium text-muted-foreground">Unavailable</span>
-            :display}
-        </CardTitle>
-        {hint&&state!=='unavailable'&&<p className="text-[11px] text-muted-foreground">{hint}</p>}
-        {state==='unavailable'&&hint&&<p className="text-[11px] text-muted-foreground">{hint}</p>}
-      </CardHeader>
-    </Card>
+  const body=(
+    <div className="wx-kpi" data-tone={tone??'default'} data-state={state}>
+      <span className="wx-kpi-label">
+        {tone==='cash'&&<Banknote className="size-3.5" aria-hidden/>}
+        {tone==='workforce'&&<Users className="size-3.5" aria-hidden/>}
+        {tone==='risk'&&<CircleAlert className="size-3.5" aria-hidden/>}
+        <span className="truncate">{label}</span>
+        {labelBn&&<span className="text-[10px] opacity-70">{labelBn}</span>}
+      </span>
+      <strong className="wx-kpi-value">
+        {state==='unavailable'||display===null?'Unavailable':display}
+      </strong>
+      {hint&&<span className="wx-kpi-hint">{hint}</span>}
+    </div>
   );
   return href?(
-    <Link href={href} className="block no-underline transition-transform hover:scale-[1.01] focus-visible:outline focus-visible:outline-2">{card}</Link>
-  ):card;
+    <Link href={href} className="block no-underline transition-transform hover:-translate-y-px">{body}</Link>
+  ):body;
 }
 
-export function KpiGrid({children}:{children:ReactNode}){return <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{children}</div>;}
+export function KpiGrid({children}:{children:ReactNode}){return <div className="wx-kpis">{children}</div>;}
+
+/* ---------------- Page scaffold ---------------- */
+
+export function PageHeader({title,description,actions,eyebrow,meta}:{
+  title:string;description?:string;actions?:ReactNode;eyebrow?:string;meta?:ReactNode;
+}){
+  return (
+    <header className="wx-header">
+      <div className="wx-header-main">
+        {eyebrow&&<span className="wx-eyebrow">{eyebrow}</span>}
+        <h1 className="wx-title">{title}</h1>
+        {description&&<p className="wx-subtitle">{description}</p>}
+        {meta&&<div className="wx-meta">{meta}</div>}
+      </div>
+      {actions&&<div className="wx-header-actions">{actions}</div>}
+    </header>
+  );
+}
+
+export function SectionCard({title,description,actions,children,footer,flush=false}:{
+  title?:string;description?:string;actions?:ReactNode;children:ReactNode;footer?:ReactNode;flush?:boolean;
+}){
+  return (
+    <section className="wx-card">
+      {(title||actions)&&(
+        <div className="wx-card-head">
+          <div className="min-w-0">
+            {title&&<h2>{title}</h2>}
+            {description&&<p>{description}</p>}
+          </div>
+          {actions&&<div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        </div>
+      )}
+      <div className={flush?'wx-card-body flush':'wx-card-body'}>{children}</div>
+      {footer&&<div className="wx-card-foot">{footer}</div>}
+    </section>
+  );
+}
+
+/** Wraps a native table in the responsive scroll/stack container. */
+export function TableShell({children,label,stackable=true}:{children:ReactNode;label?:string;stackable?:boolean}){
+  return (
+    <div className={'wx-table-wrap'+(stackable?' stackable':'')} role="region" aria-label={label??'Data table'} tabIndex={0}>
+      {children}
+    </div>
+  );
+}
+
+export function EmptyState({title,description,icon}:{title:string;description?:string;icon?:ReactNode}){
+  return (
+    <div className="wx-state">
+      {icon??<Inbox className="size-7" aria-hidden/>}
+      <strong>{title}</strong>
+      {description&&<p>{description}</p>}
+    </div>
+  );
+}
+
+export function ErrorState({message,onRetry}:{message:string;onRetry?:()=>void}){
+  return (
+    <div className="wx-error" role="alert">
+      <CircleAlert className="size-4 shrink-0" aria-hidden/>
+      <span className="min-w-0 flex-1">{message}</span>
+      {onRetry&&<Button size="sm" variant="outline" onClick={onRetry}>Retry</Button>}
+    </div>
+  );
+}
+
+export function LoadingSkeleton({rows=3}:{rows?:number}){
+  return <div className="wx-skeleton" role="status" aria-label="Loading">{[...Array(rows)].map((_,i)=><span key={i}/>)}</div>;
+}
+
+const PILL_TONES:[RegExp,'ok'|'warn'|'danger'|'brand'|'neutral'][]=[
+  [/CONFIRMED|POSTED|APPROVED|VERIFIED|ACTIVE|OK|PAID/i,'ok'],
+  [/REVIEW|PENDING|DRAFT|INCOMPLETE|PARTIAL|UNVERIFIED/i,'warn'],
+  [/REJECT|FAIL|ERROR|INVALID|UNMATCHED|DISABLED|BLOCKED/i,'danger'],
+  [/ADMIN|SUPER|OWNER|SESSION|UNIFIED/i,'brand'],
+];
+
+/** Semantic status pill; falls back to neutral for unknown states. */
+export function StatusPill({status,label}:{status:string;label?:string}){
+  const text=label??status??'UNKNOWN';
+  const tone=PILL_TONES.find(([re])=>re.test(status??''))?.[1]??'neutral';
+  return <span className="wx-pill" data-tone={tone}>{text}</span>;
+}
 
 export function StatusBadge({status}:{status:string}){
   const s=status||'UNKNOWN';

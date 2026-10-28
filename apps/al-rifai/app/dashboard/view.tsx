@@ -1,8 +1,15 @@
 'use client';
 import {useMemo} from 'react';
-import {KpiCard,KpiGrid,PageNotice,Unavailable,LoadingLines,fmtBDT,useApi} from '@/app/platform/ui';
+import Link from 'next/link';
+import {ArrowRight, Banknote, ClipboardList, ShieldCheck, Users} from 'lucide-react';
+import {
+  EmptyState,ErrorState,KpiCard,KpiGrid,LoadingSkeleton,PageHeader,PageNotice,SectionCard,StatusPill,TableShell,
+  fmtBDT,useApi,
+} from '@/app/platform/ui';
 import {opUrl,instructionBuckets,type OperationsSnapshot,ESCORT_SUMMARY_URL} from '@/app/platform/ops-client';
 import type {EscortSummaryResponse} from '@/app/sources-review/view';
+
+const RECENT_LIMIT=8;
 
 export default function DashboardView(){
   const ops=useApi<OperationsSnapshot>(opUrl('cash'));
@@ -11,69 +18,120 @@ export default function DashboardView(){
   const rows=useMemo(()=>ops.data?.rows??[],[ops.data]);
   const buckets=useMemo(()=>instructionBuckets(rows),[rows]);
   const pending=useMemo(()=>rows.filter(r=>r.issues?.length),[rows]);
-  const pendingCents=buckets.pendingCents;
+  const recent=useMemo(
+    ()=>[...rows].sort((a,b)=>`${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`)).slice(0,RECENT_LIMIT),
+    [rows],
+  );
+  const s=escort.data?.summary;
 
-  const financial=(<>{
-    [
-      <KpiCard key="ti" label="Total Instructions" labelBn="মোট নির্দেশনা" tone="cash" value={ops.data?.summary.total} hint="Verified Cash instruction rows (Current scope)" href="/transactions"/>,
-      <KpiCard key="amt" label="Instruction Total" labelBn="মোট" tone="cash" valueText={ops.data?fmtBDT(ops.data.summary.amountCents):undefined} hint="Admin instruction amounts — not verified receipts" href="/transactions"/>,
-      <KpiCard key="pend" label="Pending Amount" labelBn="অপেক্ষমাণ" tone="risk" valueText={ops.data?fmtBDT(pendingCents):undefined} hint={`${pending.length} rows with review issues`} href="/sources-review"/>,
-
-      // Posted ledger amounts are maintained behind the Cash portal and its
-      // super-admin scope; the platform reports an honest unavailable state.
-      <KpiCard key="posted" label="Posted Amount" labelBn="পোস্ট করা" tone="cash" hint="Cash Ledger postings live behind the Cash portal (super-admin scope). Connect via Cash portal to view." state="unavailable"/>,
-      <KpiCard key="today" label={"Today's Paid"} labelBn="আজ" tone="cash" valueText={buckets.hasToday?fmtBDT(buckets.today):undefined} state={buckets.hasToday?'ok':'unavailable'} hint={buckets.hasToday?'Instruction amounts dated today (Dhaka): not confirmed receipts':'No instruction rows dated today'}/>,
-      <KpiCard key="week" label="Last Week" labelBn="গত সপ্তাহ" tone="cash" valueText={fmtBDT(buckets.week)} hint="Trailing 7 days, instruction amounts only" href="/insights"/>,
-      <KpiCard key="month" label="This Month Total" labelBn="এই মাস" tone="cash" valueText={fmtBDT(buckets.month)} hint="Current Dhaka month instruction amounts" href="/income-expenditure"/>,    ]
-  }</>);
+  const financial=(
+    <>
+      <KpiCard label="Total Instructions" labelBn="মোট নির্দেশনা" tone="cash" value={ops.data?.summary.total} hint="Identity-verified instruction rows in the Current scope" href="/transactions"/>
+      <KpiCard label="Instruction Total" labelBn="মোট" tone="cash" valueText={ops.data?fmtBDT(ops.data.summary.amountCents):undefined} hint="What the Owner instructed — not a confirmed receipt" href="/transactions"/>
+      <KpiCard label="Pending Amount" labelBn="অপেক্ষমাণ" tone="risk" valueText={ops.data?fmtBDT(buckets.pendingCents):undefined} hint={`${pending.length} rows carry review notes`} href="/sources-review"/>
+      <KpiCard label="Posted Amount" labelBn="পোস্ট করা" tone="ok" hint="Cash Ledger postings are held behind the Cash portal's super-admin scope." state="unavailable"/>
+      <KpiCard label="Today's Instructions" labelBn="আজ" tone="cash" valueText={buckets.hasToday?fmtBDT(buckets.today):undefined} state={buckets.hasToday?'ok':'unavailable'} hint={buckets.hasToday?'Instruction amounts dated today (Dhaka)':'No instruction rows dated today'}/>
+      <KpiCard label="This Month" labelBn="এই মাস" tone="cash" valueText={fmtBDT(buckets.month)} hint="Current Dhaka month, instruction amounts only" href="/insights"/>
+    </>
+  );
 
   const workforce=(
     <>
       <KpiCard label="Active Employees" labelBn="কর্মচারী" tone="workforce" value={ops.data?.summary.employees} hint="Distinct employee identities in paid instructions" href="/employees"/>
-      <KpiCard label="New Employees This Month" labelBn="নতুন" tone="workforce" hint="Joining dates are not present in verified payment data yet. Employee joining history requires the HR backend." state="unavailable"/>
-      <KpiCard key="today" label={"Today's Instructions"} labelBn="আজ" tone="cash" value={buckets.todayCount} href="/transactions"/>
-      <KpiCard label="Approved Transactions" labelBn="অনুমোদিত" tone="workforce" hint="Approval state is held in the Cash portal; this read-only snapshot records identity-verified instruction rows." state="unavailable"/>
-      <KpiCard label="Pending Instructions" labelBn="অপেক্ষমাণ" tone="risk" value={pending.length} hint="Rows with verification issues in review" href="/sources-review"/>
-      <KpiCard label="Rejected Transactions" labelBn="বাতিল" tone="risk" hint="Rejection records are not exposed by any verified read-only API yet." state="unavailable"/>
+      <KpiCard label="Rows With Review Notes" labelBn="যাচাই" tone="risk" value={pending.length} hint="Parsing or identity notes held for review" href="/sources-review"/>
+      <KpiCard label="Duplicate Alerts" labelBn="ডুপ্লিকেট" tone="risk" value={s?.duplicateReview} state={s?'ok':'unavailable'} hint="Vessel duplicate candidates in review" href="/sources-review"/>
+      <KpiCard label="Review Queue" labelBn="পর্যালোচনা" tone="risk" value={s?.actionableReview} state={s?'ok':'unavailable'} hint="Actionable vessel review rows" href="/sources-review"/>
     </>
   );
 
-  const s=escort.data?.summary;
-  const risk=(s?(
-    <>
-      <KpiCard key="dup" label="Duplicate Alerts" labelBn="ডুপ্লিকেট" tone="risk" value={s.duplicateReview} hint="Vessel duplicate candidates in review" href="/sources-review"/>
-      <KpiCard label="Unmatched Payments" labelBn="অমিল" tone="risk" value={s.unmatched} hint="Reconciliation candidates awaiting decision" href="/sources-review"/>
-      <KpiCard label="Review Queue" labelBn="পর্যালোচনা" tone="risk" value={s.actionableReview} hint="Actionable vessel review rows" href="/sources-review"/>
-      <KpiCard label="Awaiting Evidence" labelBn="প্রমাণ" tone="risk" value={s.incomplete} hint="Rows with incomplete assignment evidence" href="/sources-review"/>
-    </>
-  ):(
-    <>
-      <KpiCard key="dup" label="Duplicate Alerts" labelBn="ডুপ্লিকেট" tone="risk" hint="Escort register summary unavailable." state="unavailable"/>
-      <KpiCard label="Unmatched Payments" labelBn="অমিল" tone="risk" hint="Payment reconciliation lives in the Cash portal." state="unavailable"/>
-      <KpiCard label="Review Queue" labelBn="পর্যালোচনা" tone="risk" hint="Loading…" state="unavailable"/>
-      <KpiCard label="Awaiting Evidence" labelBn="প্রমাণ" tone="risk" hint="Loading…" state="unavailable"/>
-    </>
-  ));
+  return (
+    <div className="wx-page">
+      <PageHeader
+        eyebrow="Operations workspace"
+        title="Operations overview"
+        description="Instruction, workforce and review activity across the Current dataset. Every figure is traceable to its source message; instruction amounts are not payments."
+        actions={
+          <>
+            <Link className="wx-pill" data-tone="brand" href="/cash">Cash portal <ArrowRight className="size-3"/></Link>
+            <Link className="wx-pill" data-tone="neutral" href="/employees"><Users className="size-3"/>Employees</Link>
+            <Link className="wx-pill" data-tone="neutral" href="/transactions"><Banknote className="size-3"/>Transactions</Link>
+            <Link className="wx-pill" data-tone="neutral" href="/sources-review"><ShieldCheck className="size-3"/>Review</Link>
+          </>
+        }
+        meta={ops.data?<><StatusPill status="ACTIVE" label="Snapshot live"/><span className="text-xs text-muted-foreground">checked {ops.data.checkedAt.slice(0,16).replace('T',' ')}</span></>:null}
+      />
 
-  return <div className="flex flex-col gap-4">
-    {ops.error&&<Unavailable title="Could not load Cash snapshot" reason={ops.error}/>}
-    {!ops.error&&ops.loading&&<LoadingLines/>}
-    {ops.data&&<>
-      <PageNotice notice={ops.data.notice} sourceLabel={ops.data.sourceLabel} checkedAt={ops.data.checkedAt}/>
-      {rows.length===0&&<Unavailable compact reason="No instruction rows are present in the verified snapshot — figures show what exists only."/>}
-      <section aria-label="Financial overview">
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Financial overview</h2>
-        <KpiGrid>{financial}</KpiGrid>
-      </section>
-      <section aria-label="Workforce overview">
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Workforce</h2>
-        <KpiGrid>{workforce}</KpiGrid>
-      </section>
-      <section aria-label="Risk and review">
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Risk &amp; review</h2>
-        <KpiGrid>{risk}</KpiGrid>
-      </section>
-      {escort.error&&<Unavailable compact reason={`Vessel summary unavailable: ${escort.error}`}/>}
-    </>}
-  </div>;
+      {ops.error&&<ErrorState message={`Cash snapshot could not be loaded: ${ops.error}`}/>}
+
+      {ops.data&&<PageNotice notice={ops.data.notice} sourceLabel={ops.data.sourceLabel} checkedAt={ops.data.checkedAt}/>}
+
+      <SectionCard title="Financial overview" description="Instruction amounts describe what was requested. They are never shown as completed payments.">
+        {ops.loading&&!ops.data?<LoadingSkeleton rows={2}/>:<KpiGrid>{financial}</KpiGrid>}
+      </SectionCard>
+
+      <SectionCard
+        title="Recent instructions"
+        description="Newest source-linked instructions in the Current scope."
+        actions={<Link className="text-sm underline-offset-2 hover:underline" href="/transactions">Open transactions <ArrowRight className="inline size-3"/></Link>}
+        flush
+      >
+        {ops.loading&&!ops.data&&<LoadingSkeleton rows={4}/>}
+        {ops.data&&recent.length===0&&<EmptyState title="No instructions yet" description="The verified snapshot contains no instruction rows for the current scope."/>}
+        {recent.length>0&&(
+          <TableShell label="Recent cash instructions">
+            <table className="wx-table stackable">
+              <thead>
+                <tr><th>Date</th><th>Employee</th><th>Method</th><th className="num">Amount</th><th>Status</th><th/></tr>
+              </thead>
+              <tbody>
+                {recent.map(row=>(
+                  <tr key={row.id}>
+                    <td data-label="Date"><span className="strong">{row.date}</span><span className="muted" style={{display:'block'}}>{row.time}</span></td>
+                    <td data-label="Employee"><span className="strong">{row.name||'Name unknown'}</span><span className="muted" style={{display:'block'}}>{row.employeePhone||'No employee ID'}</span></td>
+                    <td data-label="Method">{row.method||'—'}</td>
+                    <td data-label="Amount" className="num strong">{fmtBDT(row.amountCents)}</td>
+                    <td data-label="Status"><StatusPill status={row.status||'INSTRUCTION'} label={row.status||'Instruction'}/></td>
+                    <td data-label="Source"><Link className="text-xs underline-offset-2 hover:underline" href="/transactions">Details</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableShell>
+        )}
+        {ops.data&&rows.length>0&&(
+          <div className="px-4 pb-3 text-xs text-muted-foreground">
+            Showing the newest {Math.min(RECENT_LIMIT,rows.length)} of {rows.length.toLocaleString()} instructions.
+          </div>
+        )}
+      </SectionCard>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SectionCard title="Workforce & review" description="Identity and review load across the same scope.">
+          <KpiGrid>{workforce}</KpiGrid>
+        </SectionCard>
+        <SectionCard title="How amounts are defined" description="The three figures are deliberately kept separate.">
+          <dl className="grid gap-3 text-sm">
+            <div>
+              <dt className="font-semibold">Instruction amount</dt>
+              <dd className="text-muted-foreground">What the Owner instructed for an employee. Recorded once, with its original message.</dd>
+            </div>
+            <div>
+              <dt className="font-semibold">Verified amount</dt>
+              <dd className="text-muted-foreground">Requires independent payment evidence. Not available from the current read APIs.</dd>
+            </div>
+            <div>
+              <dt className="font-semibold">Posted amount</dt>
+              <dd className="text-muted-foreground">A Cash Ledger posting after separate approval. The Cash Freeze keeps this at zero for the Current scope.</dd>
+            </div>
+          </dl>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className="wx-pill" data-tone="warn" href="/sources-review"><ClipboardList className="size-3"/>Review queue</Link>
+            <Link className="wx-pill" data-tone="neutral" href="/insights">Operational insights</Link>
+          </div>
+        </SectionCard>
+      </div>
+
+      {escort.error&&<ErrorState message={`Vessel summary unavailable: ${escort.error}`}/>}
+    </div>
+  );
 }

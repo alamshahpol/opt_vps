@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 const bengali=localFont({src:"./fonts/NotoSansBengali.ttf",variable:"--font-bengali",display:"swap",weight:"100 900"});
 import "./globals.css";
+import "./workspace.css";
 import "./vessel-register.css";
 import "./conversation-inspector.css";
 

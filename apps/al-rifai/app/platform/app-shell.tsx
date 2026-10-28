@@ -121,7 +121,7 @@ export function AppShell({user,label,title,actions,children}:{user:ShellUser;lab
   const current=navItemForPath(pathname);
   const closeMobile=()=>setMobileOpen(false);
   return (
-    <div className="flex min-h-dvh bg-background text-foreground">
+    <div className="wx-shell flex min-h-dvh bg-background text-foreground">
       <aside data-collapsed={collapsed}
         className={cn('sticky top-0 hidden h-dvh shrink-0 border-r transition-[width] md:block',collapsed?'w-16':'w-64')}>
         <SidebarContent user={user} collapsed={collapsed} onToggle={()=>setCollapsed(v=>!v)}/>
