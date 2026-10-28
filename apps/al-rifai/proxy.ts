@@ -33,16 +33,20 @@ export async function proxy(request:NextRequest){
  if(mode==="on"){
   const identity=await sessionIdentityFromCookieHeader(request.headers.get("cookie"));
   if(identity)return pass();
+  // Only 'on' may answer a browser navigation with the sign-in page. In
+  // 'shadow' the legacy challenge has to reach the browser (401 +
+  // WWW-Authenticate); redirecting there hid the only credential that can open
+  // the workspace, so a click on any protected page dead-ended on /login.
+  if(prefersDocumentNavigation(request.headers)){
+   const target=sanitizeReturnTo(pathname+(request.nextUrl.search||""));
+   const url=request.nextUrl.clone();
+   url.pathname="/login";
+   url.search=`?next=${encodeURIComponent(target)}`;
+   return NextResponse.redirect(url,302);
+  }
  }
- // Browser document navigations go to the sign-in page; everything else keeps
- // the fail-closed 401 so no client code silently proceeds unauthenticated.
- if(prefersDocumentNavigation(request.headers)){
-  const target=sanitizeReturnTo(pathname+(request.nextUrl.search||""));
-  const url=request.nextUrl.clone();
-  url.pathname="/login";
-  url.search=`?next=${encodeURIComponent(target)}`;
-  return NextResponse.redirect(url,302);
- }
+ // Everything else keeps the fail-closed 401 so no client silently proceeds
+ // unauthenticated, and so the legacy Basic credential can still be supplied.
  return unauthorized();
 }
 // The candidate host applies this same Basic guard before named authentication.

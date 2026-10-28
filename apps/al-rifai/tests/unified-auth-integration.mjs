@@ -43,6 +43,15 @@ test('the proxy only trusts a database-validated session and only in on mode', (
   assert.match(proxy, /if\(prefersDocumentNavigation\(request\.headers\)\)/);
   assert.match(proxy, /url\.pathname="\/login"/);
   assert.match(proxy, /sanitizeReturnTo\(/);
+  // The sign-in redirect must live inside the `on` branch: in shadow the legacy
+  // 401 challenge is what lets the browser offer the only credential that can
+  // open the workspace (2026-10-28 click-through dead end).
+  const onBranch = proxy.indexOf('if(mode==="on"){');
+  const redirect = proxy.indexOf('if(prefersDocumentNavigation(request.headers))');
+  const fallback = proxy.lastIndexOf('return unauthorized();');
+  assert.ok(onBranch > -1 && redirect > -1 && fallback > -1);
+  assert.ok(onBranch < redirect, 'document redirects are inside the on-mode branch');
+  assert.ok(redirect < fallback, 'the fail-closed challenge is the final fallback');
   // The Cash portal stays exempt and keeps its own boundary.
   assert.match(proxy, /isCashPortalPath\(pathname\)/);
   assert.match(proxy, /pathname===HEALTH_PATH/);
