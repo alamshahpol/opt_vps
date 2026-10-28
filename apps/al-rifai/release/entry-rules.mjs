@@ -15,10 +15,13 @@ export const WORKSPACE_PATHS = [
   '/income-expenditure',
   '/archive',
   '/assistant',
+  '/admin',
 ];
 
 const CASH_RULES = [
   ...WORKSPACE_PATHS,
+  '/login',
+  '/api/auth/',
   '/cash',
   '/vessel',
   '/api/cash/',
@@ -36,6 +39,8 @@ const CASH_RULES = [
 
 const MAIN_RULES = [
   ...WORKSPACE_PATHS,
+  '/login',
+  '/api/auth/',
   '/review',
   '/vessel',
   '/register',
