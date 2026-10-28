@@ -243,6 +243,19 @@ export function sanitizeReturnTo(value: unknown, fallback = '/dashboard'): strin
   return decoded;
 }
 
+/**
+ * Whether a visitor who already holds a validated session may skip the form.
+ *
+ * Only `on` mode lets a Cash session authorise workspace routes. In `shadow`
+ * the session is deliberately *not* sufficient, so sending the browser to a
+ * protected page would bounce straight back to /login — the 2026-10-28
+ * ERR_TOO_MANY_REDIRECTS cycle. The destination is sanitised in every mode.
+ */
+export function signedInRedirectTarget(mode: UnifiedAuthMode, next: unknown): string | null {
+  if (mode !== 'on') return null;
+  return sanitizeReturnTo(next);
+}
+
 export const DEFAULT_UNIFIED_ORIGINS = [
   'https://alrifai.iamazim.com',
   'https://app.al-rifai.iamazim.com',

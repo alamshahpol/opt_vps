@@ -29,6 +29,7 @@ import {
   prefersDocumentNavigation,
   resolveCapabilities,
   sanitizeReturnTo,
+  signedInRedirectTarget,
   unifiedAuthMode,
   validateCapabilityRequest,
 } from '../lib/unified-auth-policy.ts';
@@ -221,4 +222,25 @@ test('only document navigations are redirected to the sign-in page', () => {
   assert.equal(prefersDocumentNavigation(headers('document')), true);
   assert.equal(prefersDocumentNavigation(headers('empty')), false);
   assert.equal(prefersDocumentNavigation(headers(null)), false);
+});
+
+test('a signed-in visitor is only forwarded when the session authorises the workspace', () => {
+  // Regression: 2026-10-28 ERR_TOO_MANY_REDIRECTS. Forwarding an authenticated
+  // visitor out of /login in shadow mode produced /login 307 -> /dashboard 302
+  // -> /login 307 ... because shadow never authorises a protected route.
+  assert.equal(signedInRedirectTarget('shadow', '/dashboard'), null);
+  assert.equal(signedInRedirectTarget('shadow', '/admin'), null);
+  assert.equal(signedInRedirectTarget('off', '/dashboard'), null);
+  assert.equal(signedInRedirectTarget('on', '/dashboard'), '/dashboard');
+  assert.equal(signedInRedirectTarget('on', '/admin'), '/admin');
+  // Destination sanitisation is unchanged in the only mode that redirects.
+  assert.equal(signedInRedirectTarget('on', 'https://evil.example/x'), '/dashboard');
+  assert.equal(signedInRedirectTarget('on', '//evil.example'), '/dashboard');
+  assert.equal(signedInRedirectTarget('on', '/login'), '/dashboard');
+  assert.equal(signedInRedirectTarget('on', '/cash'), '/dashboard');
+  assert.equal(signedInRedirectTarget('on', '/api/auth/session'), '/dashboard');
+  assert.equal(signedInRedirectTarget('on', undefined), '/dashboard');
+  // Unknown configuration stays fail-closed.
+  assert.equal(signedInRedirectTarget(unifiedAuthMode('unknown'), '/dashboard'), null);
+  assert.equal(signedInRedirectTarget(unifiedAuthMode(undefined), '/dashboard'), null);
 });

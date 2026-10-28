@@ -177,9 +177,35 @@ test('the entry allowlists expose only the new sign-in and admin surfaces', () =
 
 test('the sign-in page cannot render while unified auth is off, and cannot loop', () => {
   assert.match(loginPage, /if \(mode === 'off'\) redirect\('\/'\)/);
-  assert.match(loginPage, /const identity = await currentIdentity\(\);[\s\S]*if \(identity\) redirect\(next\)/);
+  assert.match(loginPage, /const identity = await currentIdentity\(\);/);
+  // The 2026-10-28 regression: forwarding any signed-in visitor to a protected
+  // page looped in shadow mode (/login 307 -> /dashboard 302 -> /login ...).
+  assert.doesNotMatch(loginPage, /if \(identity\) redirect\(next\)/);
+  assert.match(loginPage, /const target = signedInRedirectTarget\(mode, next\);/);
+  assert.match(loginPage, /if \(identity && target\) redirect\(target\);/);
   assert.match(loginPage, /sanitizeReturnTo\(raw\)/);
   assert.doesNotMatch(loginPage, /type=["']password["']|name=["']password["']/);
+});
+
+test('shadow sign-in reports verification instead of navigating to a protected page', () => {
+  const view = source('app/login/view.tsx');
+  assert.match(loginPage, /verifiedName=\{mode === 'shadow'/);
+  assert.match(view, /if \(mode === 'shadow'\) \{[\s\S]*?setVerified\(/);
+  // The shadow branch returns before any navigation call.
+  const shadowBranch = view.slice(view.indexOf("if (mode === 'shadow') {"), view.indexOf("window.location.assign(result.redirect || next)"));
+  assert.match(shadowBranch, /return;/);
+  assert.doesNotMatch(shadowBranch, /window\.location/);
+  // The confirmation panel renders no credential, CSRF value or token.
+  const panel = view.slice(
+    view.indexOf("step === 'credentials' && verified ? ("),
+    view.indexOf(") : step === 'credentials' ? (")
+  );
+  assert.ok(panel.length > 0, 'confirmation panel is present');
+  for (const forbidden of ['login.password', '{csrf}', '{target}', 'password_hash', '__Host-']) {
+    assert.ok(!panel.includes(forbidden), `confirmation panel renders no ${forbidden}`);
+  }
+  assert.match(panel, /Your username, password and Cash sessions are unchanged/);
+  assert.match(panel, /Open workspace/);
 });
 
 test('no secret material or hardcoded credential appears in the new surface', () => {

@@ -39,7 +39,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export default function LoginView({next, mode}: {next: string; mode: 'off' | 'shadow' | 'on'}) {
+export default function LoginView({next, mode, verifiedName}: {next: string; mode: 'off' | 'shadow' | 'on'; verifiedName?: string | null}) {
   const [step, setStep] = useState<Step>('credentials');
   const [login, setLogin] = useState({username: '', password: ''});
   const [change, setChange] = useState({currentPassword: '', newPassword: '', confirmPassword: ''});
@@ -48,6 +48,9 @@ export default function LoginView({next, mode}: {next: string; mode: 'off' | 'sh
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  // Shadow mode: a verified credential is reported, never forwarded to a page
+  // that the session cannot authorise yet.
+  const [verified, setVerified] = useState<string | null>(verifiedName ?? null);
 
   async function submitCredentials(event: React.FormEvent) {
     event.preventDefault();
@@ -65,6 +68,11 @@ export default function LoginView({next, mode}: {next: string; mode: 'off' | 'sh
       if (result.user.mustChangePassword) {
         setStep('password');
         setNotice(`${result.user.displayName}, please set a new password before continuing.`);
+        return;
+      }
+      if (mode === 'shadow') {
+        setVerified(result.user.displayName || 'Signed in');
+        setLogin({username: '', password: ''});
         return;
       }
       window.location.assign(result.redirect || next);
@@ -102,7 +110,26 @@ export default function LoginView({next, mode}: {next: string; mode: 'off' | 'sh
           একই Cash Portal username ও password দিয়ে ঢুকুন — আলাদা কোনো password নেই।
         </p>
 
-        {step === 'credentials' ? (
+        {step === 'credentials' && verified ? (
+          <div className="mt-5 flex flex-col gap-3">
+            <p role="status" className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100">
+              <span className="font-medium">Signed in — credential verified.</span>{' '}
+              {verified === 'Signed in'
+                ? 'Your existing Cash Portal username and password were accepted.'
+                : `${verified}, your existing Cash Portal username and password were accepted.`}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Workspace pages still require the existing private entry credential until
+              unified sign-in is switched on. Your username, password and Cash sessions are unchanged.
+            </p>
+            <Button asChild>
+              <a href="/dashboard">Open workspace</a>
+            </Button>
+            <Button type="button" variant="outline" onClick={() => { setVerified(null); setError(''); }}>
+              Use a different account
+            </Button>
+          </div>
+        ) : step === 'credentials' ? (
           <form className="mt-5 flex flex-col gap-3" onSubmit={submitCredentials}>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="username">Username</Label>
