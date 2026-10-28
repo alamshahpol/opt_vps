@@ -1,5 +1,31 @@
 # Next-Session Handoff — Updated After Session 3
 
+## SESSION-REVOCATION PARITY DEPLOYED — 2026-10-28 20:53 (+01:00)
+
+Image `sha256:946635bd3ba7e17c712d7ff4c96e6e1c93601323501fcc947b194306c0dcff96`
+(source `c113784`) deployed to the app service only. Mode remains `shadow`;
+PostgreSQL and both WhatsApp containers were not restarted.
+
+Pre-deploy gate: 1 user, fingerprint `e4d99a36…`, 0 current postings, ledger 31,
+rollback images `d405d54f…` and `2c0833c4…` present, candidate digest exact.
+Safety net (not restored): `pre-revocation-deploy-20261028-2051.dump`
+(`9b5acd7b…`).
+
+Post-deploy: `/` and `/signup` 200, `/dashboard` 401 + challenge, `/cash` 200 with
+a live login endpoint, `/employees` 183 rows with BDT totals, `/vessel-register`
+200, 0 overflow at 1440/390; identity, sessions (31) and freeze unchanged; no app
+errors.
+
+**Feature verification (deployed):** the running build contains
+`otherSessionsRevoked` in the cash route chunk. The end-to-end change-password
+check requires the Owner's live credential and was **not** executed by the agent;
+it is verified 16/16 on the identical digest in isolation. Owner procedure and the
+post-check (audit row `PASSWORD_CHANGED` with `otherSessionsRevoked`) are recorded
+in `apps/al-rifai/docs/UI-REDESIGN-20261028.md` §12.
+
+**Rollback:** re-pin `sha256:d405d54f…`, `docker compose up -d --no-deps app`,
+verify `/cash`.
+
 ## UI RELEASE DEPLOYED — 2026-10-28 19:59 (+01:00)
 
 Image `sha256:d405d54f12001024b0e371edb72f1b93b62228d0c70ec6ed77b64e2121d6bdab`
