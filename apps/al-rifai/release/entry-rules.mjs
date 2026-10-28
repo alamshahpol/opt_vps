@@ -19,6 +19,7 @@ export const WORKSPACE_PATHS = [
 ];
 
 const CASH_RULES = [
+  '/signup',
   ...WORKSPACE_PATHS,
   '/login',
   '/api/auth/',
@@ -38,6 +39,7 @@ const CASH_RULES = [
 ];
 
 const MAIN_RULES = [
+  '/signup',
   ...WORKSPACE_PATHS,
   '/login',
   '/api/auth/',
@@ -61,6 +63,8 @@ export function isPathAllowed(url, host) {
   let decoded = path;
   try { decoded = decodeURIComponent(path); } catch { return false; }
   if (/(^|\/)\.\.?(\/|$)/.test(decoded) || decoded.includes('//') || decoded.includes('\\')) return false;
+  // The public homepage is the only exact-root path; '/' is never a subtree rule.
+  if (path === '/') return true;
   for (const rule of entryRules(host)) {
     if (rule.endsWith('/')) {
       if (path.startsWith(rule)) return true;

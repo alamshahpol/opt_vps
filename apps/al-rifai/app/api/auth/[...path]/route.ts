@@ -74,8 +74,8 @@ async function handle(request: NextRequest, segments: string[]) {
     const {identity, token} = await currentSession(request);
     await assertCsrf(request, token);
     const body = await readBody(request);
-    await changeOwnPassword(identity, body);
-    return reply({ok: true});
+    const result = await changeOwnPassword(identity, body, token);
+    return reply({ok: true, otherSessionsRevoked: result.otherSessionsRevoked});
   }
 
   if (request.method === "POST" && action === "username") {

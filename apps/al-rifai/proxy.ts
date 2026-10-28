@@ -10,6 +10,9 @@ import {
 import {sessionIdentityFromCookieHeader} from "@/lib/unified-auth-db";
 
 const HEALTH_PATH="/api/health";
+// Public marketing surface. These paths render no business data and are the only
+// unauthenticated application routes besides the Cash portal.
+const PUBLIC_SITE_PATHS=new Set(["/","/signup"]);
 const unauthorized=()=>new NextResponse("Private validation authentication required",{status:401,headers:{"WWW-Authenticate":'Basic realm="Al-Rifai private validation", charset="UTF-8"',"Cache-Control":"no-store"}});
 
 export async function proxy(request:NextRequest){
@@ -20,6 +23,9 @@ export async function proxy(request:NextRequest){
  // The public cash portal has its own session and CSRF boundary. Existing
  // application routes retain the legacy private validation guard.
  if(pathname===HEALTH_PATH||isCashPortalPath(pathname))return pass();
+ // The public company site is reachable without a credential; it carries no
+ // client, personnel or financial data.
+ if(PUBLIC_SITE_PATHS.has(pathname))return pass();
  // The legacy Basic guard is evaluated first and is never removed by the
  // unified path, so a working credential always remains usable.
  if(validationIdentity(request.headers.get("authorization")))return pass();

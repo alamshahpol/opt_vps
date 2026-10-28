@@ -6,7 +6,7 @@ import {Label} from '@/components/ui/label';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
 import {Sheet,SheetContent,SheetDescription,SheetFooter,SheetHeader,SheetTitle} from '@/components/ui/sheet';
 import {Table,TableBody,TableCell,TableHead,TableHeader,TableRow} from '@/components/ui/table';
-import {AddEmployeeDrawer,ActionButtonDisabled,LoadingLines,PageNotice,Unavailable,bdt,useApi,fmtInt} from '@/app/platform/ui';
+import {AddEmployeeDrawer,ActionButtonDisabled,LoadingLines,PageNotice,Unavailable,fmtBDT,useApi,fmtInt} from '@/app/platform/ui';
 import {opUrl,type OperationsSnapshot} from '@/app/platform/ops-client';
 import {csv,saveCsv} from '@/lib/register';
 
@@ -68,7 +68,7 @@ export default function EmployeesView(){
             <TableCell className="max-w-44 truncate">{r.name}</TableCell>
             <TableCell className="whitespace-nowrap tabular-nums">{r.employeePhone??'—'}</TableCell>
             <TableCell className="text-right tabular-nums">{fmtInt.format(r.payments)}</TableCell>
-            <TableCell className="text-right tabular-nums">{bdt.format(r.amountCents)}</TableCell>
+            <TableCell className="text-right tabular-nums">{fmtBDT(r.amountCents)}</TableCell>
             <TableCell className="whitespace-nowrap">{r.lastDate||'—'}</TableCell>
             <TableCell>{r.needsReview?<span className="text-xs text-amber-600">issues in review</span>:<span className="text-xs text-muted-foreground">clear on newest rows</span>}</TableCell>
             <TableCell onClick={e=>e.stopPropagation()}><span className="flex gap-1"><Button size="sm" variant="ghost" onClick={()=>setDetail(r)}>Profile</Button></span></TableCell>
@@ -84,7 +84,7 @@ export default function EmployeesView(){
           <SheetDescription>Derived from verified payment instructions only. Full HR master data is not published by any read API yet.</SheetDescription>
         </SheetHeader>
         {detail&&<div className="grid gap-2 px-4 text-sm">
-          {[['Employee ID (Authoritative Ref)',detail.employeePhone??'record-only'],['Alias names',detail.name],['Recorded aliases',String(detail.aliases)],['Payment instructions',String(detail.payments)],['Instruction total',bdt.format(detail.amountCents)],['Most recent instruction',detail.lastDate||'—'],['Rows needing review',String(detail.needsReview)]].map(([k,v])=>
+          {[['Employee ID (Authoritative Ref)',detail.employeePhone??'record-only'],['Alias names',detail.name],['Recorded aliases',String(detail.aliases)],['Payment instructions',String(detail.payments)],['Instruction total',fmtBDT(detail.amountCents)],['Most recent instruction',detail.lastDate||'—'],['Rows needing review',String(detail.needsReview)]].map(([k,v])=>
             <div key={k} className="flex justify-between gap-4 border-b pb-1"><span className="text-muted-foreground">{k}</span><span className="text-right font-medium">{String(v)}</span></div>)}
           <SheetFooter className="flex-row justify-end gap-2">
             <Button variant="outline" onClick={()=>setDetail(null)}>Close</Button>

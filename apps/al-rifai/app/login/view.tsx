@@ -15,6 +15,7 @@ const messages: Record<string, string> = {
   CURRENT_PASSWORD_INVALID: 'The current password is not correct.',
   PASSWORD_POLICY: 'The new password must be at least 12 characters.',
   PASSWORD_CONFIRMATION_MISMATCH: 'The new password and confirmation do not match.',
+  PASSWORD_UNCHANGED: 'The new password must be different from the current one.',
   CSRF_DENIED: 'Security check failed. Reload the page and try again.',
   AUTHENTICATION_REQUIRED: 'The session has expired. Sign in again.',
   USERNAME_INVALID: 'Username must be 3-80 characters: letters, digits, dot, dash or underscore.',

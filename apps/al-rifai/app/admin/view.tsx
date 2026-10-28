@@ -65,6 +65,7 @@ const messages: Record<string, string> = {
   CURRENT_PASSWORD_INVALID: 'The current password is not correct.',
   PASSWORD_POLICY: 'The new password must be at least 12 characters.',
   PASSWORD_CONFIRMATION_MISMATCH: 'The new password and confirmation do not match.',
+  PASSWORD_UNCHANGED: 'The new password must be different from the current one.',
   USER_FIELDS_INVALID: 'The new account is incomplete or invalid.',
   ORIGIN_DENIED: 'This address is not allowed to submit this action.',
   CSRF_DENIED: 'Security check failed. Reload the page and try again.',
@@ -276,7 +277,7 @@ export default function AdminView() {
               className="flex flex-col gap-3"
               onSubmit={e => {
                 e.preventDefault();
-                void mutate('/api/auth/password', 'POST', selfPassword, 'Password changed.').then(() =>
+                void mutate('/api/auth/password', 'POST', selfPassword, 'Password changed. Other signed-in devices have been signed out.').then(() =>
                   setSelfPassword({currentPassword: '', newPassword: '', confirmPassword: ''}),
                 );
               }}

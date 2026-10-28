@@ -7,7 +7,7 @@ import {Label} from '@/components/ui/label';
 import {Tabs,TabsContent,TabsList,TabsTrigger} from '@/components/ui/tabs';
 import {Table,TableBody,TableCell,TableHead,TableHeader,TableRow} from '@/components/ui/table';
 import {Card,CardContent,CardDescription,CardHeader,CardTitle} from '@/components/ui/card';
-import {LoadingLines,PageNotice,Unavailable,bdt,useApi,fmtInt} from '@/app/platform/ui';
+import {LoadingLines,PageNotice,Unavailable,fmtBDT,useApi,fmtInt} from '@/app/platform/ui';
 import {opUrl,type OperationsSnapshot} from '@/app/platform/ops-client';
 
 interface ArchiveMessagesResponse{messages:{id:string;messageDate:string;time:string;sender:string;source:string;chatKey?:string;kind?:string}[];total:number}
@@ -37,7 +37,7 @@ export default function ArchiveView(){
         {archiveCash.error&&<Unavailable title="Archive unavailable" reason={archiveCash.error}/>}
         {archiveCash.data&&<>
           <PageNotice notice={archiveCash.data.notice} sourceLabel={archiveCash.data.sourceLabel} checkedAt={archiveCash.data.checkedAt}/>
-          <p className="text-xs text-muted-foreground">{fmtInt.format(archiveCash.data.total)} archive rows · total {bdt.format(archiveCash.data.summary.amountCents)} (legacy epoch, immutable)</p>
+          <p className="text-xs text-muted-foreground">{fmtInt.format(archiveCash.data.total)} archive rows · total {fmtBDT(archiveCash.data.summary.amountCents)} (legacy epoch, immutable)</p>
           <p><Link href="/cash/archive" className="text-sm underline-offset-2 hover:underline">Open preserved Cash Archive screen ↗</Link></p>
         </>}
       </TabsContent>

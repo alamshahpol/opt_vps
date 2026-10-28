@@ -7,7 +7,7 @@ import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/compo
 import {Sheet,SheetContent,SheetDescription,SheetFooter,SheetHeader,SheetTitle} from '@/components/ui/sheet';
 import {Table,TableBody,TableCell,TableHead,TableHeader,TableRow} from '@/components/ui/table';
 import {Badge} from '@/components/ui/badge';
-import {AddTransactionDrawer,ActionButtonDisabled,LoadingLines,PageNotice,StatusBadge,Unavailable,bdt,useApi,fmtInt} from '@/app/platform/ui';
+import {AddTransactionDrawer,ActionButtonDisabled,LoadingLines,PageNotice,StatusBadge,Unavailable,fmtBDT,useApi,fmtInt} from '@/app/platform/ui';
 import {opUrl,type OperationsSnapshot} from '@/app/platform/ops-client';
 import {csv,saveCsv} from '@/lib/register';
 import {money} from '@/lib/operations';
@@ -120,7 +120,7 @@ export default function TransactionsView(){
         </SheetHeader>
         {detail&&<div className="grid gap-2 px-4 text-sm">
           {[['Date',detail.date],['Time',detail.time],['Employee',detail.name||'—'],['Employee ID',detail.employeePhone||'—'],
-            ['Payout number',detail.payoutPhone],['Method',detail.method],['Amount',bdt.format(detail.amountCents)],
+            ['Payout number',detail.payoutPhone],['Method',detail.method],['Amount',fmtBDT(detail.amountCents)],
             ['Source',detail.source],['Instruction source ID',detail.sourceId?`${detail.sourceId}`:'—'],
             ['Category',detail.category],['Status',detail.status||'—'],['Identity verified',detail.identityVerified===true?'Yes':'No'],
             ['Identity rule',detail.identityRule||'—'],['Sender',detail.sender],['Purpose',detail.purpose||'—'],

@@ -6,7 +6,7 @@ import {Card,CardContent,CardDescription,CardHeader,CardTitle} from '@/component
 import {ChartContainer,ChartLegend,ChartLegendContent,ChartTooltip,ChartTooltipContent} from '@/components/ui/chart';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
-import {KpiCard,KpiGrid,LoadingLines,PageNotice,Unavailable,bdt,useApi} from '@/app/platform/ui';
+import {KpiCard,KpiGrid,LoadingLines,PageNotice,Unavailable,fmtBDT,useApi} from '@/app/platform/ui';
 import {opUrl,type OperationsSnapshot} from '@/app/platform/ops-client';
 import type {CashRow} from '@/lib/operations';
 
@@ -41,7 +41,7 @@ export default function IncomeExpenditureView(){
 
     <KpiGrid>
       <KpiCard label="Total Income" tone="cash" hint="No verified income records exist in any read API." state="unavailable"/>
-      <KpiCard label="Total Expenses (instructions)" tone="cash" valueText={bdt.format(totalExpense)} hint="Instruction totals — not confirmed or posted spend" state={ops.data?'ok':'unavailable'}/>
+      <KpiCard label="Total Expenses (instructions)" tone="cash" valueText={fmtBDT(totalExpense)} hint="Instruction totals — not confirmed or posted spend" state={ops.data?'ok':'unavailable'}/>
       <KpiCard label="Net Position" tone="cash" hint="Cannot be computed without verified income; neither column is a posted ledger." state="unavailable"/>
       <KpiCard label="Expense categories" hint="Salary/Fuel/Maintenance/Food/Port/Other classification is not recorded in verified rows yet — expenses by payment method are shown instead." state="unavailable"/>
       <KpiCard label="Expenses by vessel" hint="Cash instruction rows carry no vessel reference; a joined employee–assignment dataset is a backend gap." state="unavailable"/>

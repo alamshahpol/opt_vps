@@ -7,7 +7,7 @@ import {ChartContainer,ChartLegend,ChartLegendContent,ChartTooltip,ChartTooltipC
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
-import {KpiCard,KpiGrid,LoadingLines,PageNotice,Unavailable,useApi,bdt} from '@/app/platform/ui';
+import {fmtBDT,KpiCard,KpiGrid,LoadingLines,PageNotice,Unavailable,useApi,bdt} from '@/app/platform/ui';
 import {vesselReport,reportCsv} from '@/lib/vessel-reports';
 import {saveCsv} from '@/lib/register';
 import {opUrl,rangeCutoff,type OperationsSnapshot,ESCORT_SUMMARY_URL,monthlyTotals} from '@/app/platform/ops-client';
@@ -65,7 +65,7 @@ export default function InsightsView(){
 
     <KpiGrid>
       <KpiCard label="Instruction rows" tone="cash" value={rows.length} hint="Filtered instruction rows"/>
-      <KpiCard label="Instruction total" tone="cash" valueText={bdt.format(rows.reduce((n,r)=>n+r.amountCents,0))}/>
+      <KpiCard label="Instruction total" tone="cash" valueText={fmtBDT(rows.reduce((n,r)=>n+r.amountCents,0))}/>
       <KpiCard label="Employees paid" tone="workforce" value={new Set(rows.filter(r=>r.employeePhone).map(r=>r.employeePhone)).size}/>
       <KpiCard label="Pending (review)" tone="risk" value={rows.filter(r=>r.issues?.length).length}/>
       <KpiCard label="Total vessels (register)" tone="default" value={s?undefined:undefined} hint="Register rows: see Vessel Register" state="unavailable"/>

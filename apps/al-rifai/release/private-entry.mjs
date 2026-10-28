@@ -7,8 +7,6 @@ let active=0;
 const server=https.createServer({key:readFileSync(simulated?root+'/key.pem':root+'/tls/private-entry.key'),cert:readFileSync(simulated?root+'/cert.pem':root+'/tls/private-entry.crt'),maxHeaderSize:16384},(req,res)=>{
  const host=String(req.headers.host||'').split(':')[0].toLowerCase(),cashHost=!simulated&&host===cashOrigin.hostname;
  if((host!==origin.hostname&&!cashHost)||!req.url?.startsWith('/')||req.url.length>8192){res.writeHead(403);return res.end();}
- if(req.url==='/'&&!cashHost){res.writeHead(302,{Location:'/review','Cache-Control':'no-store'});return res.end();}
- if(req.url==='/'&&cashHost){res.writeHead(302,{Location:'/cash','Cache-Control':'no-store'});return res.end();}
  // Boundary-exact allowlists (release/entry-rules.mjs). Workspace routes are
  // explicitly listed so no unrelated prefix is exposed.
  if(!isPathAllowed(req.url,cashHost?'cash':'main')){res.writeHead(404);return res.end();}

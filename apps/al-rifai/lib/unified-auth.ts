@@ -185,7 +185,8 @@ export async function logoutCurrent(token: string | null | undefined): Promise<v
 export async function changeOwnPassword(
   identity: UnifiedIdentity,
   body: {currentPassword?: unknown; newPassword?: unknown; confirmPassword?: unknown},
-): Promise<void> {
+  currentToken?: string | null,
+): Promise<{otherSessionsRevoked: number}> {
   if (!isEnabled()) throw new UnifiedAuthError('UNIFIED_AUTH_DISABLED', 404);
   const current = typeof body.currentPassword === 'string' ? body.currentPassword : '';
   const next = typeof body.newPassword === 'string' ? body.newPassword : '';
@@ -196,12 +197,26 @@ export async function changeOwnPassword(
   }
   if (next.length < 12 || Buffer.byteLength(next) > 256) throw new UnifiedAuthError('PASSWORD_POLICY', 400);
   if (next !== confirm) throw new UnifiedAuthError('PASSWORD_CONFIRMATION_MISMATCH', 400);
+  if (await verifyPassword(next, row.password_hash)) throw new UnifiedAuthError('PASSWORD_UNCHANGED', 400);
   const encoded = await hashPassword(next);
   await database().query(
     'UPDATE public.cash_portal_users SET password_hash=$2,must_change_password=false,password_changed_at=now(),version=version+1 WHERE id=$1',
     [row.id, encoded],
   );
-  await audit(row.id, row.id, 'PASSWORD_CHANGED', {surface: 'unified'});
+  // Credential change revokes every other session for this account. The caller's
+  // own session survives so the change cannot lock the account out mid-action;
+  // when no token is known (defensive path) all sessions are revoked.
+  const revoked = await database().query<{n: number}>(
+    `WITH gone AS (
+       DELETE FROM public.cash_portal_sessions
+       WHERE user_id=$1 AND ($2='' OR id<>$2)
+       RETURNING 1
+     ) SELECT count(*)::int AS n FROM gone`,
+    [row.id, currentToken ? hashToken(currentToken) : ''],
+  );
+  const otherSessionsRevoked = Number(revoked.rows[0]?.n ?? 0);
+  await audit(row.id, row.id, 'PASSWORD_CHANGED', {surface: 'unified', otherSessionsRevoked});
+  return {otherSessionsRevoked};
 }
 
 export async function changeOwnUsername(
