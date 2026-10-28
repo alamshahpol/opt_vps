@@ -23,7 +23,15 @@
 }
 
 /* ---------- page scaffold ---------- */
-.wx-page { display: flex; flex-direction: column; gap: 1.25rem; }
+.wx-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+  /* Page-level clipping: any over-wide child is contained here while inner
+     table wrappers keep their own horizontal scroll. */
+  overflow-x: clip;
+}
 
 .wx-header {
   display: flex;
@@ -55,6 +63,7 @@
 
 /* ---------- surfaces ---------- */
 .wx-card {
+  min-width: 0;
   background: var(--wx-surface);
   border: 1px solid var(--wx-line);
   border-radius: var(--wx-radius);
@@ -220,6 +229,11 @@
 .wx-form-row { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .wx-help { font-size: .76rem; color: var(--wx-ink-soft); }
 
+/* Form labels default to left alignment in the workspace; some legacy global
+   rules centre them, which reads badly on a settings form. */
+.wx-page label, .wx-shell label { text-align: left; }
+.wx-page [data-slot="label"], .wx-shell [data-slot="label"] { align-self: start; }
+
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
   .wx-header { gap: .75rem; }
@@ -239,6 +253,7 @@
   .wx-table.stackable thead { display: none; }
   .wx-table.stackable tbody tr {
     display: block;
+    max-width: 100%;
     border: 1px solid var(--wx-line);
     border-radius: 10px;
     margin: 0 0 .65rem;
@@ -247,7 +262,9 @@
   }
   .wx-table.stackable tbody td {
     display: grid;
-    grid-template-columns: 42% 1fr;
+    grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+    min-width: 0;
+    overflow-wrap: anywhere;
     gap: .5rem;
     align-items: baseline;
     border: 0;
@@ -256,6 +273,7 @@
   }
   .wx-table.stackable tbody td::before {
     content: attr(data-label);
+    min-width: 0;
     font-size: .72rem;
     text-transform: uppercase;
     letter-spacing: .05em;

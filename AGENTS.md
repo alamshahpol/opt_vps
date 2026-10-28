@@ -62,6 +62,14 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **UI redesign — 2026-10-28 (source only, NOT deployed):** shared workspace
+> design system (`app/workspace.css`, `PlatformPage` primitives) and responsive
+> passes over dashboard, employees, transactions, admin, cash and vessel. Browser
+> verified 40/40 (8 pages × 360/390/768/1280/1440, zero overflow). Candidate
+> `sha256:dbc9efe0…` built, **not deployed**; production stays `sha256:2c0833c4…`
+> in `shadow`. Known: `/admin` is unreachable in shadow mode. Record:
+> `apps/al-rifai/docs/UI-REDESIGN-20261028.md`.
+
 > **Owner suite — 2026-10-28 (source only, NOT deployed):** public homepage at
 > `/` and `/signup` (no credential, no business data), instruction totals fixed to
 > divide minor units (the Dipongkar "BDT 4,030,600" was a display error; true

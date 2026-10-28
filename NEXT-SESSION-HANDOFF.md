@@ -1,5 +1,39 @@
 # Next-Session Handoff — Updated After Session 3
 
+## RESPONSIVE UI/UX REDESIGN — 2026-10-28 (source only; NOT deployed)
+
+Full responsive pass over the public site and every workspace page.
+
+**Shared system** — `app/workspace.css` and `app/platform/ui.tsx` now provide
+`PageHeader`, `SectionCard`, `TableShell` (tables become stacked record cards at
+≤768px), `KpiCard`/`KpiGrid` with tone coding, `StatusPill`, `EmptyState`,
+`ErrorState`, `LoadingSkeleton` and the provenance notice. Tokens, focus rings,
+40px touch targets and reduced-motion support are defined once.
+
+**Pages** — Dashboard (operational overview, recent instructions, explicit
+instruction/verified/posted definitions), Employees (filtered vs all-record
+totals, responsive master table, profile sheet), Transactions (filter bar with
+filtered total, responsive ledger, evidence sheet), Admin Panel (header +
+responsive account table; all guards untouched), Cash (mobile navigation strip,
+stacked metrics), Vessel Register (existing responsive shell, palette aligned),
+Insights/Income/Archive/Sources (shared primitives).
+
+**Verification** — headless Chromium over CDP: 8 pages × 5 widths (360/390/768/
+1280/1440) = **40/40 with zero horizontal overflow**; mobile drawer opens with
+working links; Admin Panel rendered in an isolated `on` instance (1 account row,
+all account-settings forms present, 0 overflow at 390/768/1440). 173 tests →
+172 pass / 1 skip; typecheck, ESLint 0/0 and `next build` pass. Screenshots and
+the defect list: `apps/al-rifai/docs/UI-REDESIGN-20261028.md`.
+
+**Open finding** — the Admin Panel is unreachable while the mode is `shadow`
+(Basic identity is never the Super Admin → 307 `/dashboard`). Credential changes
+remain available through the Cash portal profile/password cards until `on` is
+approved or a narrow session-authorised `/account` route is authorised.
+
+**Candidate image** — `sha256:dbc9efe0d20d9243430d526f3c362fccff1654ae11a2668504e8618d235622b2`,
+built from `8e23fff` + design polish; **not deployed**. Production remains
+`sha256:2c0833c4…` in `shadow`.
+
 ## OWNER SUITE — 2026-10-28 (source only; NOT deployed)
 
 Three Owner requests implemented in source, tested and browser-verified. No
