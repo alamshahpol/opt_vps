@@ -62,6 +62,17 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **Unified Super Admin authentication — 2026-10-28 (source only, NOT deployed,
+> NOT enabled):** the Owner's existing Cash Portal credential is now the unified
+> identity in source. Added `/login`, `POST /api/auth/*`, `/admin` (server-gated
+> on the configured Super Admin), a fail-closed dual path in `proxy.ts` gated by
+> `ALRIFAI_UNIFIED_AUTH_MODE` (default `off` = deployed behaviour), and a prepared
+> unapplied migration candidate `0033`. No user row, hash, session, container,
+> database, WhatsApp or permission was changed; the legacy `validator` Basic guard
+> is retained as the fallback. Report and cutover/rollback plan:
+> `apps/al-rifai/docs/UNIFIED-AUTH-DESIGN.md`. Enabling `shadow`/`on`, applying
+> 0033 and deploying all require exact Owner approval.
+
 ### 0.1 Architecture
 - One application (`/opt/vps/apps/al-rifai`), one PostgreSQL database (`alrifai`),
   one app container (`al-rifai-app-1`) running the pinned image in `compose.yaml`.

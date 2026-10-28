@@ -1,5 +1,46 @@
 # Next-Session Handoff — Updated After Session 3
 
+## UNIFIED SUPER ADMIN AUTHENTICATION — 2026-10-28 (source only, NOT deployed)
+
+Owner directive: the existing working Cash Portal username/password is the
+credential baseline and must be preserved exactly; no second technical password
+for the Owner; the Cash account becomes the unified Super Admin identity.
+
+Delivered (source + tests only — **no deploy, no restart, no migration, no user
+row touched**):
+- `lib/unified-auth-policy.ts` (pure policy), `lib/unified-auth-db.ts` (session
+  loader), `lib/unified-auth.ts` (login/logout/self-service, mode-gated).
+- `/login` + `POST /api/auth/{login,logout,session,password,username}`; identity
+  reuses `public.cash_portal_users`/`cash_portal_sessions` and the deployed
+  `__Host-alrifai_cash` cookie, so every live Cash session stays valid.
+- `/admin` Admin Panel (server-gated on the configured Super Admin): profile,
+  voluntary username/password change, create accounts, role + capability
+  assignment, enable/disable, read-only audit history.
+- `proxy.ts` gains a fail-closed dual path: legacy Basic is checked **first** and
+  always accepted; `ALRIFAI_UNIFIED_AUTH_MODE` (`off` default → deployed
+  behaviour, `shadow` → sign-in proven only, `on` → session accepted).
+- `GET /api/cash/audit`, capability-aware `PATCH /api/cash/users/:id`, and
+  `LAST_SUPER_ADMIN_PROTECTED` in addition to `LAST_ADMIN_PROTECTED`.
+- Prepared, **unapplied** `db/migration-candidates/0033_unified_auth_sessions.sql`
+  (additive: `capabilities`, `username_changed_at`, audit SELECT grant, final-admin
+  guard trigger; no data mutation).
+- 28 new tests (policy + wiring); typecheck, lint and `next build` pass; isolated
+  runtime rehearsal against a throwaway Postgres (own container/network, removed
+  afterwards) passed 30/30 checks.
+
+Verified production identity mapping (read-only, 2026-10-28): exactly one Cash
+account — id `81a73b320d9d56c175b48552a648b7405659dc814921bf12be38927f07b72c79`,
+username `Admin`, role ADMIN, active, hash fingerprint
+`e4d99a36533187eecd5f9d4f515f7ca3` — and `ALRIFAI_CASH_SUPER_ADMIN_IDS` contains
+exactly that id. 24 live sessions; newest activity 2026-10-28T03:33Z.
+
+Gate before any cutover: Owner approval of migration 0033, of the image build, and
+of `ALRIFAI_UNIFIED_AUTH_MODE=shadow` → `on` in `/etc/vps/apps/al-rifai/app.env`.
+The validator Basic guard is deliberately retained as the fallback.
+Full report: `apps/al-rifai/docs/UNIFIED-AUTH-DESIGN.md`.
+
+---
+
 ## UI VISIBILITY REPAIR — 2026-10-27 (deployed)
 
 Root cause: the workspace routes existed in the image but the private-entry proxy
