@@ -62,6 +62,16 @@ This section is the current authority for agent behaviour. Later sections remain
 valid safety policy; where an older section contradicts this one, this section
 wins.
 
+> **Shadow redirect-loop repair — 2026-10-28 (deployed, `shadow` retained):** the
+> 2026-10-28 `ERR_TOO_MANY_REDIRECTS` defect (a signed-in visitor was forwarded
+> from `/login` to `/dashboard` while shadow refused to authorise it) is fixed in
+> `cc10ed8` — `signedInRedirectTarget()` forwards only in `on` mode and shadow now
+> reports “credential verified” instead of navigating. Deployed image
+> `sha256:960ee047…` (previous `sha256:52105520…` retained for rollback);
+> `ALRIFAI_UNIFIED_AUTH_MODE=shadow` unchanged; identity (1 `Admin` row,
+> fingerprint `e4d99a36…`, 26 sessions) and Cash Freeze (0 current postings)
+> preserved. **`on` mode still NOT authorized.**
+
 > **Production activation — 2026-10-28 (stages 1–3 done; `shadow` live; `on` NOT
 > enabled):** Owner-authorized `0033` is applied (ledger 31 rows) and the verified
 > candidate `sha256:52105520…` (commit `47f7e11`) is the running app image with

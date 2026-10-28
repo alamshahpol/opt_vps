@@ -292,3 +292,56 @@ outboxes empty, no error lines in the log.
 `ALRIFAI_UNIFIED_AUTH_MODE=on`; retiring the `validator` guard; any username,
 password, hash, session or secret change; any Cash posting or WhatsApp send.
 
+
+## 9. Incident and repair — shadow redirect loop (2026-10-28, deployed)
+
+**Symptom.** Opening `https://app.al-rifai.iamazim.com/login` produced
+`ERR_TOO_MANY_REDIRECTS`. Two `LOGIN` audit events (`surface=unified`,
+08:35:24Z and 08:36:23Z) show the credential itself was accepted.
+
+**Root cause.** `app/login/page.tsx` forwarded any signed-in visitor with
+`if (identity) redirect(next)`, while `proxy.ts` refuses to authorise a session
+outside `on` mode. Measured chain:
+
+```
+/login                       307 -> /dashboard
+/dashboard                   302 -> /login?next=%2Fdashboard
+/login?next=%2Fdashboard     307 -> /dashboard        (cycle)
+```
+
+Shadow-only: `off` answers 401 and `on` authorises `/dashboard`, so neither
+loops. It required a **valid** session cookie; without one `/login` returned 200.
+
+**Fix — commit `cc10ed8`.**
+- `lib/unified-auth-policy.ts`: `signedInRedirectTarget(mode, next)` returns a
+  sanitised target only for `on`, `null` for `shadow`/`off`.
+- `app/login/page.tsx`: uses the guard; in shadow it renders the page and passes
+  the verified display name.
+- `app/login/view.tsx`: shadow shows a “credential verified” panel (no token, no
+  password, no id) explaining the workspace still needs the private entry
+  credential, with “Open workspace” and “Use a different account”; refreshes do
+  not create sessions.
+- `tests/unified-auth-shadow-loop.mjs`: replays both decisions with a valid
+  session, asserts the **pre-fix rule loops**, and asserts the shipped policy
+  terminates.
+
+**Verification.** 166 tests → 165 pass / 0 fail / 1 pre-existing skip; typecheck,
+ESLint 0/0, `next build` pass. Isolated clone with the new image and a real cookie:
+21/21 checks (`/login` 1 hop 200 + verified panel; dashboard/admin/review 2 hops
+ending on `/login`; no extra sessions over 3 refreshes; Cash login 200; Basic 200;
+no escalation; `off` 401; `on` 307→200, isolated only).
+
+**Deployment.** Image `sha256:960ee047b7a9ce880a01885794835debd45286c1d780bbb8d36eff3abd35fc43`
+(platform manifest `sha256:d2491546…`, config `sha256:f4f4042e…`), source
+`cc10ed8`; only the app service recreated; mode stays `shadow`; no migration
+applied; PostgreSQL and WhatsApp untouched. Rollback image
+`sha256:52105520…` retained.
+
+**Production after deploy.** `/login` 200 with 0 redirects; `/dashboard`,
+`/admin`, `/review` each 1 hop to `/login` (200); invalid/stale cookie → 200; no
+verified panel without a session; `/cash` 200; health ok; 1 user / 26 sessions
+(5 unexpired) / audit 35 / fingerprint `e4d99a36…` / version 2 / ledger 31 /
+0 current postings.
+
+**Remaining.** Owner browser confirmation of the sign-in panel, then a separate
+explicit approval for `on` mode. The `validator` guard is unchanged.

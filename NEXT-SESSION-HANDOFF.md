@@ -1,5 +1,54 @@
 # Next-Session Handoff — Updated After Session 3
 
+## SHADOW REDIRECT-LOOP REPAIR — 2026-10-28 (deployed, `shadow` retained)
+
+**Incident.** The Owner opened `/login` and the browser reported
+`ERR_TOO_MANY_REDIRECTS`. Two `LOGIN` audit events (`surface=unified`, 08:35:24Z
+and 08:36:23Z) prove the Cash credential was accepted; the failure was the
+post-login redirect, not authentication.
+
+**Root cause.** `app/login/page.tsx` forwarded *any* visitor holding a valid
+session to `next` (`if (identity) redirect(next)`), while `proxy.ts` deliberately
+refuses to authorise a session outside `on` mode. Chain: `/login` **307** →
+`/dashboard` **302** → `/login?next=%2Fdashboard` **307** → … until the browser
+aborted. Shadow-only: `off` returns 401 and `on` authorises, so neither loops.
+
+**Fix (`cc10ed8`).**
+- `lib/unified-auth-policy.ts`: new pure `signedInRedirectTarget(mode, next)` —
+  returns a sanitised target **only** in `on`.
+- `app/login/page.tsx`: uses that guard; in `shadow` it renders the page and
+  passes the verified display name instead of redirecting.
+- `app/login/view.tsx`: shadow sign-in shows a “credential verified” panel that
+  explains the workspace still needs the private entry credential, offers
+  “Open workspace” and “Use a different account”; it stores no token and creates
+  no extra session on refresh.
+- Tests: `tests/unified-auth-shadow-loop.mjs` replays the two cooperating
+  decisions with a valid session, proves the **pre-fix rule loops**, and proves
+  the shipped policy terminates (shadow 1 hop, dashboard/admin/review 2 hops
+  ending on `/login`, off 401, on 307→200). Suite total now 166 tests.
+
+**Validation.** 166 tests → 165 pass / 0 fail / 1 pre-existing skip; typecheck,
+ESLint (0/0), `next build` pass. Isolated clone rehearsal with the new image and a
+real session cookie: **21/21** checks pass, including “no loop”, “credential
+verified” rendering, no extra sessions across three refreshes, Cash login intact,
+Basic intact, no escalation, `off` 401, and `on` (isolated only) 307→200.
+
+**Deployment.** Image `sha256:960ee047b7a9ce880a01885794835debd45286c1d780bbb8d36eff3abd35fc43`
+(source `cc10ed8`); only `al-rifai-app-1` recreated; `ALRIFAI_UNIFIED_AUTH_MODE=shadow`;
+PostgreSQL and both WhatsApp containers untouched; no migration applied.
+Previous image `sha256:52105520…` retained for rollback.
+
+**Production verification.** `/login` 200 with 0 redirects; `/dashboard`,
+`/admin`, `/review` each resolve in one hop to `/login`; an invalid/stale cookie
+also returns 200; no verified panel without a session; `/cash` 200; health ok;
+1 user / 26 sessions (5 unexpired) / audit 35 / fingerprint `e4d99a36…` / version
+2 / ledger 31 / 0 current postings — all unchanged.
+
+**Awaiting the Owner:** reload `https://app.al-rifai.iamazim.com/login`; the form
+should render (or the verified panel if a session cookie is present). Signing in
+again should show the confirmation panel, not the loop. `on` mode still requires a
+new explicit authorization.
+
 ## UNIFIED AUTH PRODUCTION ACTIVATION — 2026-10-28 (stages 1–3 done, `shadow` live)
 
 Owner-authorized production execution. **Three stages performed; `on` mode was not
