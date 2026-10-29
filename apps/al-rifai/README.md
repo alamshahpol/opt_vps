@@ -1,5 +1,9 @@
 # AL-RIFA’I — Current Production State (2026-10-27)
 
+> For a clean source checkout, start with the [installation and local validation
+> guide](../../docs/INSTALLATION.md). The status below is a dated operational
+> record, not verification or authorization of a new production deployment.
+
 This section supersedes older status notes below. Verified against the running
 application and database on 2026-10-27.
 

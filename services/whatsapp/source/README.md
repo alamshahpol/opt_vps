@@ -30,6 +30,19 @@ A Model Context Protocol (MCP) server for WhatsApp, enabling Claude to read and 
 
 ## Installation
 
+> **This VPS checkout:** the instructions below describe the upstream
+> standalone project, not an authorized production install or re-pair. Do not
+> run them against the existing accounts, restart a bridge, change grants, or
+> start a second writer without separate Owner approval. See the
+> [repository installation guide](../../../docs/INSTALLATION.md) and root
+> `AGENTS.md` for the local boundaries.
+>
+> The Python wheel includes the broker, lifecycle, native-reader and service
+> modules as well as `main.py`. Installing that wheel does **not** install or
+> configure the separate Go bridge, grant access, or pair an account. The
+> security-updated `cryptography` dependency has no prebuilt Intel macOS wheel;
+> that platform may require a Rust/OpenSSL source-build toolchain.
+
 ### Prerequisites
 
 - Go 1.26+

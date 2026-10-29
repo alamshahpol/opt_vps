@@ -13,11 +13,12 @@ import {liveCashCoverage,liveCashRows} from '@/lib/live-cash-read';
 //               rows and the owner-confirmed Excel/snapshot projection).
 // No row is deleted, rewritten or truncated by this split.
 
-const EMPTY_SUMMARY={...accountsImportSummary};
-
 export async function loadCashSnapshot(){
  const live=await liveCashRows('CURRENT');
  const coverage=await liveCashCoverage('CURRENT');
+ // The summary is backed by private, checksum-verified evidence. Access it only
+ // when a request needs it, never while Next.js collects modules during a build.
+ const summary={...accountsImportSummary};
  const notice=coverage.last_date
   ? `Current view: canonical records from the approved WA-01 backfill through ${coverage.last_date} (Asia/Dhaka). Pre-transition records are held in Archive Records for Cash and are excluded from these totals.`
   : 'Current view is empty: no canonical Cash record has been published yet. All pre-transition records are preserved in Archive Records for Cash.';
@@ -26,7 +27,7 @@ export async function loadCashSnapshot(){
   checkedAt:new Date().toISOString(),
   notice,
   sourceLabel:'Canonical WA-01 backfill · Owner → Accountant',
-  importSummary:{...EMPTY_SUMMARY,updatedAt:coverage.last_date??EMPTY_SUMMARY.updatedAt,sourceMessages:Number(coverage.messages),accountsQualifiedRows:live.length},
+  importSummary:{...summary,updatedAt:coverage.last_date??summary.updatedAt,sourceMessages:Number(coverage.messages),accountsQualifiedRows:live.length},
  };
 }
 
