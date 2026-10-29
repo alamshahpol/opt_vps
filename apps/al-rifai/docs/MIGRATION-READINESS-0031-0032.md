@@ -1,5 +1,9 @@
 # Migration Readiness — 0031 Cash Submissions & 0032 Vessel Commands
 
+> The status and restore report below are dated historical records, not a new
+> production verification. The current disposable-only runner has mock safety
+> tests but its actual PostgreSQL execution has not been verified here.
+
 Status: **READY FOR OWNER APPROVAL — PREPARED, REHEARSED, NOT APPLIED**.
 
 Verified 2026-10-27 (final handoff):
@@ -76,15 +80,27 @@ pg_restore --list <file>.dump | head -50                   # archive readable
 pg_restore --list <file>.dump | wc -l                      # compare to expectation
 ```
 
-## 7. Isolated restore rehearsal (required before production)
+## 7. Isolated schema rehearsal (not a production restore)
+
+In an **isolated, non-production** environment with Docker and the trusted
+`postgres:16-alpine` image already present, run from `apps/al-rifai`:
+
 ```bash
-docker run -d --name alrifai-restore-check -e POSTGRES_PASSWORD=... -e POSTGRES_DB=alrifai postgres:16-alpine
-docker exec -i alrifai-restore-check psql -U postgres -d alrifai -c "CREATE ROLE alrifai_app LOGIN" || true
-pg_restore -vc --no-owner --no-privileges -d alrifai <backup>.dump   # via docker exec
-# then apply 0031 + 0032 and run tests/sql/0031_*.sql and tests/sql/0032_*.sql
+sh tests/sql/rehearsal_bootstrap.sh
 ```
-The Session 3 rehearsal script `tests/sql/rehearsal_bootstrap.sh` reproduces the
-full 0000–0032 chain on a throwaway container on every run.
+
+The script accepts **no container arguments**. It creates its own networkless
+container with tmpfs data and no host mounts or published ports, applies
+0000–0030 and the two candidates, runs the synthetic SQL assertions, and removes
+its container on exit. It never targets an existing database. The image is not
+automatically pulled. Older instructions accepting a container name are
+obsolete and unsafe.
+
+This empty-database rehearsal does **not** restore or verify a real backup, and
+it does not prove compatibility with the current live schema or data. A separate,
+owner-approved restore into a verified disposable environment, backup integrity
+check, migration review and deployment authorization are still required before
+any production action.
 
 ## 8. Execution commands (after approval; not run in this session)
 ```bash

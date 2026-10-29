@@ -41,6 +41,7 @@ class AccountsImportTests(unittest.TestCase):
   r=m.parse_message(self.message(),self.proof())[0][0];q,held,reviews,n=m.reconcile_duplicates([r,{**r,'id':'second','sourceId':'second-message'}]);self.assertEqual(q,[]);self.assertEqual(len(held),2);self.assertEqual(len(reviews),2);self.assertEqual(n,1)
  def test_different_dates_and_amounts_remain_separate(self):
   r=m.parse_message(self.message(),self.proof())[0][0];q,held,_,_=m.reconcile_duplicates([r,{**r,'id':'next-day','date':'2026-10-07'},{**r,'id':'other-amount','amountCents':60000}]);self.assertEqual(len(q),3);self.assertEqual(held,[])
+ @unittest.skipUnless(os.environ.get('ALRIFAI_EVIDENCE_DIR'), 'Requires an explicitly provided isolated evidence copy')
  def test_source_coverage_and_qualified_totals(self):
   d=read_snapshot();old=json.loads((EVIDENCE/'conversation-snapshot.json').read_text());messages=[r for c in old['chunks'] if c['kind']=='accountMessages' for r in json.loads(c['payload'])]
   qualified={r['sourceId'] for r in d['accountsCash']};review={r['sourceMessageId'] for r in d['accountsReviews']};excluded=set(d['accountsExcluded']);self.assertEqual(qualified|review|excluded,{r['id'] for r in messages});self.assertFalse(excluded & (qualified|review));self.assertEqual(len(messages),10434)
@@ -48,6 +49,7 @@ class AccountsImportTests(unittest.TestCase):
   by_id={r['id']:r for r in messages};self.assertTrue(all(by_id[r['sourceId']]['sender']=='Muradul Azim' for r in d['accountsCash']))
   keys=[(r['date'],r['employeePhone'] or m.base.norm(r['name']),r['payoutPhone'],r['method'],r['amountCents']) for r in d['accountsCash']];self.assertEqual(len(keys),len(set(keys)))
   self.assertEqual(sum(r['date']=='2026-10-06' for r in d['accountsCash']),17);self.assertEqual(sum(r['amountCents'] for r in d['accountsCash'] if r['date']=='2026-10-06'),340000)
+ @unittest.skipUnless(os.environ.get('ALRIFAI_EVIDENCE_DIR'), 'Requires an explicitly provided isolated evidence copy')
  def test_chunks_and_determinism_vessels_unchanged(self):
   p=EVIDENCE/'accounts-snapshot.json';snapshot=json.loads(p.read_text())
   for c in snapshot['chunks']:self.assertEqual(c['contentHash'],hashlib.sha256(c['payload'].encode()).hexdigest());self.assertLess(len(c['payload'].encode()),1900000)

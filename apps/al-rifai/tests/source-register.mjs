@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {totals,candidates,emptyFilters,filterPrograms,parseImport,exportCsv,parseDate} from '../lib/programs.ts';
 import {vesselDirectory,historicalRows,qualityIssues} from '../lib/register.ts';
-const archive=JSON.parse(fs.readFileSync((process.env.ALRIFAI_EVIDENCE_DIR || '/var/lib/vps/al-rifai/evidence')+'/chat-archive.json','utf8'));
+// The default test suite does not read production evidence. The explicit
+// evidence suite requires an operator-provided isolated copy, not a live path.
+if(!process.env.ALRIFAI_EVIDENCE_DIR){
+ console.error('Set ALRIFAI_EVIDENCE_DIR to an isolated, authorized evidence copy before running this test.');
+ process.exit(2);
+}
+const archive=JSON.parse(fs.readFileSync(process.env.ALRIFAI_EVIDENCE_DIR+'/chat-archive.json','utf8'));
 const rows=archive.programs;
 assert.equal(archive.messages.length,3677);
 assert.equal(new Set(rows.map(p=>p.id)).size,rows.length);

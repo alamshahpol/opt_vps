@@ -1,5 +1,10 @@
 # AL-RIFA’I AI Platform
 
+> **New checkout?** Follow the [installation and local validation guide](docs/INSTALLATION.md).
+> It distinguishes a public-only preview from the separately authorized,
+> VPS-specific production system; the historical status notes below are not
+> proof of this checkout's production readiness.
+
 **HISTORICAL LEVEL B — CLOSED BY OWNER** (11 October 2026). Historical research, reconciliation, representation qualification, Option A validator repair and related historical-only work are closed. Original acceptance and PASS/FAIL/PARTIAL/BLOCKED/UNVERIFIED findings remain reference evidence; the old validator-repair recommendation is superseded. No import, posting or registry activation is authorized. Do not reopen without new explicit Owner authorization.
 
 > CLOSED — HISTORICAL REFERENCE ONLY.

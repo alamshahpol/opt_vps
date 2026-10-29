@@ -43,16 +43,21 @@ class UpdatedConversationTests(unittest.TestCase):
   rows,_,_=m.reconcile([self.row(masterMobile='',escortMobile='',escortName='',startDate=''),self.row(id='other',masterMobile='',escortMobile='',escortName='',startDate='')]);self.assertEqual(len(rows),2)
  def test_release_point_cancel_not_location(self):
   rows,_,_=m.reconcile([self.row(endDate='2026-10-03',details={'recordKind':'Escort program','releasePoint':'Cancel','endShift':'N'})]);self.assertEqual(rows[0]['details']['releasePoint'],'');self.assertFalse(rows[0]['details']['releaseConfirmed'])
+ @unittest.skipUnless(os.environ.get('ALRIFAI_EVIDENCE_DIR'), 'Requires an explicitly provided isolated evidence copy')
  def test_all_source_messages_accounted(self):
   d=snapshot_data();self.assertEqual(len(d['messages']),16655);self.assertEqual(len({x['id'] for x in d['messages']}),16655);self.assertEqual(sum(x['messages'] for x in d['summary']['files']),16655);self.assertEqual(d.get('cash',[]),[]);self.assertEqual(len(d['accountReviews']),9002);self.assertEqual(len(d['accountantNotes']),1431)
+ @unittest.skipUnless(os.environ.get('ALRIFAI_EVIDENCE_DIR'), 'Requires an explicitly provided isolated evidence copy')
  def test_valid_phone_date_identity_never_counted_twice(self):
   d=snapshot_data();keys=[(m.phone(r['masterMobile']),m.phone(r['escortMobile']),r['startDate']) for r in d['programs']];keys=[k for k in keys if all(k)];self.assertEqual(len(keys),len(set(keys)))
+ @unittest.skipUnless(os.environ.get('ALRIFAI_EVIDENCE_DIR'), 'Requires an explicitly provided isolated evidence copy')
  def test_every_program_evidence_row_is_retained(self):
   d=snapshot_data();baseline=json.loads((EVIDENCE/'chat-archive.json').read_text())['programs']+json.loads((EVIDENCE/'operations.json').read_text())['programs'];all_ids={r['id'] for r in baseline+d['programEvidence'] if r.get('details',{}).get('recordKind')!='Vessel reference'}
   linked_ids={e['id'] for r in d['programs'] for e in r['evidence']};self.assertEqual(all_ids,linked_ids);self.assertEqual(sum(len(r['evidence']) for r in d['programs']),sum(r.get('details',{}).get('recordKind')!='Vessel reference' for r in baseline)+d['summary']['sourceProgramEvidence'])
+ @unittest.skipUnless(os.environ.get('ALRIFAI_EVIDENCE_DIR'), 'Requires an explicitly provided isolated evidence copy')
  def test_chunks_integrity(self):
   d=json.loads((EVIDENCE/'conversation-snapshot.json').read_text());self.assertEqual(len(d['chunks']),len({c['id'] for c in d['chunks']}));self.assertLess(len(d['chunks'])+6,50)
   for c in d['chunks']:self.assertEqual(c['contentHash'],hashlib.sha256(c['payload'].encode()).hexdigest());self.assertLess(len(c['payload'].encode()),1900000)
+ @unittest.skipUnless(os.environ.get('ALRIFAI_EVIDENCE_DIR'), 'Requires an explicitly provided isolated evidence copy')
  def test_reimport_byte_identical(self):
   upload=Path(os.environ.get('AL_RIFAI_IMPORT_INPUT_DIR','/workspace/scratch/8260437e5e8a/upload'))
   if not upload.exists():self.skipTest('Original export bytes are required for byte-identical reimport verification')
